@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsp compile . --warn-as-error",
     "format": "tsp format \"main.tsp\" \"lib/**/*.tsp\" \"services/**/*.tsp\" \"test/**/*.tsp\"",
-    "lint": "tsp compile . --no-emit --warn-as-error && tsp format --check \"main.tsp\" \"lib/**/*.tsp\" \"services/**/*.tsp\" \"test/**/*.tsp\"",
+    "lint": "node scripts/lint.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
