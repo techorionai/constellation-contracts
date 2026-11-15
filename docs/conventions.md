@@ -260,6 +260,15 @@ The event envelope follows CloudEvents 1.0 in JSON format.
 
 A CloudEvents extension name has only lowercase letters and digits, with a maximum of 20 characters.
 
+## Link templates
+
+An application gives a `LinkTemplateSet`. A client builds a link from `baseUrl` and a template.
+
+- `baseUrl` is `https://` and a host, or `http://localhost` for development. It can have a port. It has no path, no user info, no query, and no fragment.
+- A `template` starts with `{base_url}/`. It is an RFC 6570 level 1 path template. It has no `..`, no `@`, no `?`, no `#`, and no reserved expansion such as `{+id}`.
+- A consumer MUST percent-encode each variable value before it puts the value in the template.
+- A consumer MUST compare the host of the final URL with the host of `baseUrl`. If the hosts are not equal, the consumer MUST NOT use the link.
+
 ## Versions and compatible changes
 
 - The release tag has the form `vMAJOR.MINOR.PATCH`. All files have the same version.

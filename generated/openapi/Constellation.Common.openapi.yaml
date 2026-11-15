@@ -196,9 +196,11 @@ components:
           description: Type of the resource.
         template:
           type: string
-          pattern: ^\{base_url\}
+          pattern: ^(?!.*\.\.)\{base_url\}/[A-Za-z0-9._~/%-]*(\{[a-z_][a-z0-9_]*\}[A-Za-z0-9._~/%-]*)*$
           format: uri-template
-          description: RFC 6570 level 1 template that starts with `{base_url}`, for example `{base_url}/tickets/{id}`.
+          description: |-
+            RFC 6570 level 1 path template. It starts with `{base_url}/`. It has no `..`, no `@`, no `?`,
+            no `#`, and no reserved expansion such as `{+id}`. Example: `{base_url}/tickets/{id}`.
         description:
           type: string
           description: Description of the link.
@@ -217,7 +219,10 @@ components:
         baseUrl:
           type: string
           format: uri
-          description: Value that replaces `{base_url}`.
+          pattern: ^(https://[A-Za-z0-9.-]+|http://localhost)(:[0-9]{1,5})?$
+          description: |-
+            Value that replaces `{base_url}`. It is `https://` and a host, or `http://localhost` for
+            development, with an optional port. It has no path, no user info, no query, and no fragment.
         templates:
           type: array
           items:
