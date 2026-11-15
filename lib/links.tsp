@@ -40,3 +40,5 @@ model LinkTemplateSet {
   /** Link templates of the application. */
   templates: LinkTemplate[];
 }
+using TypeSpec.Http;
+model   X{}
