@@ -17,7 +17,7 @@ model LinkTemplate {
   @pattern("^\\{base_url\\}")
   template: string;
 
-  /** Description of the link. */
+  /** Text that describes the link. */
   description?: string;
 }
 
