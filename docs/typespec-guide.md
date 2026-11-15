@@ -44,31 +44,39 @@ tsp compile .               # Compile to output format
 
 ### tspconfig.yaml
 
+This is the configuration of this repository. The OpenAPI files go to `generated/openapi/`, in OpenAPI 3.0.0 format.
+
 ```yaml
+kind: project
+entrypoint: main.tsp
+warn-as-error: true
 emit:
   - "@typespec/openapi3"
 options:
   "@typespec/openapi3":
-    emitter-output-dir: "{output-dir}/openapi3"
-    openapi-versions:
-      - 3.1.0
-    file-type: "json" # or "yaml"
+    emitter-output-dir: "{project-root}/generated/openapi"
+    openapi-versions: ["3.0.0"]
+    file-type: yaml
+    output-file: "{service-name}.openapi.yaml"
+    new-line: lf
 ```
 
 ### Common dependencies (package.json)
 
+This repository pins the exact versions in `devDependencies`. It does not use a caret.
+
 ```json
 {
-  "dependencies": {
-    "@typespec/compiler": "^0.64.0",
-    "@typespec/http": "^0.64.0",
-    "@typespec/openapi": "^0.64.0",
-    "@typespec/openapi3": "^0.64.0",
-    "@typespec/rest": "^0.64.0",
-    "@typespec/versioning": "^0.64.0"
+  "devDependencies": {
+    "@typespec/compiler": "1.18.0",
+    "@typespec/http": "1.18.0",
+    "@typespec/openapi": "1.18.0",
+    "@typespec/openapi3": "1.18.0"
   }
 }
 ```
+
+The project rules of this repository are in [conventions.md](conventions.md).
 
 ---
 

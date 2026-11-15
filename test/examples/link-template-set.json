@@ -1,0 +1,255 @@
+{
+  "valid": [
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "http://localhost:8080",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "http://localhost",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}/comments/{comment_id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/helpdesk",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "http://localhost:8080/helpdesk",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "app": "helpdesk",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "Ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}@evil.example/x/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/../../admin/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/{+id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets?x={id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets#{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "http://helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "javascript:alert(1)//",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://user@helpdesk.example.com",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com/?a=1",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com#top",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "http://localhost.evil.example",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/helpdesk/",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/../admin",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/./x",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/a/..",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com//x",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    }
+  ]
+}

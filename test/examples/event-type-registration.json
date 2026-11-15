@@ -1,0 +1,36 @@
+{
+  "valid": [
+    {
+      "source": "/helpdesk",
+      "app": "helpdesk",
+      "eventTypes": [
+        {
+          "type": "helpdesk.ticket.created",
+          "description": "A ticket was created.",
+          "dataSchema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "required": ["ticketId"],
+            "properties": { "ticketId": { "type": "string" } }
+          }
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "source": "/helpdesk",
+      "app": "helpdesk",
+      "eventTypes": [
+        { "type": "helpdesk.ticket.created", "description": "No schema." }
+      ]
+    },
+    {
+      "source": "/helpdesk",
+      "app": "helpdesk",
+      "eventTypes": [
+        { "type": "created", "description": "Bad type.", "dataSchema": {} }
+      ]
+    }
+  ]
+}

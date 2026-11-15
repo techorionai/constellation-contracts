@@ -1,0 +1,393 @@
+openapi: 3.0.0
+info:
+  title: Constellation Common Models
+  version: 0.0.0
+tags: []
+paths: {}
+components:
+  schemas:
+    AppKey:
+      type: string
+      maxLength: 32
+      pattern: ^[a-z][a-z0-9_]*$
+      description: Key of an application, for example `helpdesk` or `customer_portal`.
+    BadRequest:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request is not valid.
+    CloudEventEnvelope:
+      type: object
+      required:
+        - specversion
+        - id
+        - source
+        - type
+        - time
+        - datacontenttype
+        - data
+        - actor
+        - actortype
+      properties:
+        specversion:
+          type: string
+          enum:
+            - '1.0'
+          description: CloudEvents version.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the event. Unique for each `source`.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 256
+          format: uri-reference
+          description: URI reference of the service that made the event, for example `/helpdesk`.
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        time:
+          type: string
+          format: date-time
+          description: Time when the event happened.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource, for example the ticket ID.
+        datacontenttype:
+          type: string
+          enum:
+            - application/json
+          description: Media type of `data`.
+        dataschema:
+          type: string
+          format: uri
+          description: URI of the schema of `data`.
+        data:
+          type: object
+          additionalProperties: {}
+          description: Data of the event.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `sub` of the token: the ID of the principal.'
+        actortype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `act` of the token: the agent that acts for the user.'
+        acttype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
+        traceparent:
+          type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
+          description: W3C trace context (CloudEvents distributed tracing extension).
+      description: A CloudEvent when the type of `data` is not known.
+    Conflict:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request conflicts with the state of the resource.
+    CursorPageParams:
+      type: object
+      properties:
+        pageToken:
+          type: string
+          maxLength: 1024
+          description: Opaque token from `nextPageToken` of the previous page.
+        pageSize:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 200
+          description: Maximum number of items in the page.
+          default: 50
+      description: Query parameters of a list operation with cursor pagination.
+    EventType:
+      type: string
+      maxLength: 128
+      pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}$
+      description: Type of an event, for example `helpdesk.ticket.created`.
+    EventTypeDefinition:
+      type: object
+      required:
+        - type
+        - description
+        - dataSchema
+      properties:
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        description:
+          type: string
+          description: Description of the event.
+        dataSchema:
+          type: object
+          additionalProperties: {}
+          description: JSON Schema (draft 2020-12) document for `data`.
+        deprecated:
+          type: boolean
+          description: True if the event type is deprecated.
+      description: One event type that a service publishes.
+    EventTypeRegistration:
+      type: object
+      required:
+        - source
+        - app
+        - eventTypes
+      properties:
+        source:
+          type: string
+          description: The `source` of the events of the service.
+        app:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: Key of the application.
+        eventTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTypeDefinition'
+          description: Event types of the application.
+      description: The event types that a service registers with the events service.
+    FieldError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: JSON Pointer to the incorrect value.
+        code:
+          type: string
+          description: Stable code that a machine can read.
+        message:
+          type: string
+          description: Message for a person.
+      description: One incorrect field of a request.
+    Forbidden:
+      type: object
+      properties:
+        missingScopes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionKey'
+          description: Permissions that the principal lacks. An agent uses them to ask the user for approval.
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The principal does not have the permission.
+    InternalServerError:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The server has an internal error.
+    LinkTemplate:
+      type: object
+      required:
+        - resourceType
+        - template
+      properties:
+        resourceType:
+          allOf:
+            - $ref: '#/components/schemas/ResourceType'
+          description: Type of the resource.
+        template:
+          type: string
+          pattern: ^(?!.*\.\.)\{base_url\}/[A-Za-z0-9._~/%-]*(\{[a-z_][a-z0-9_]*\}[A-Za-z0-9._~/%-]*)*$
+          format: uri-template
+          description: |-
+            RFC 6570 level 1 path template. It starts with `{base_url}/`. It has no `..`, no `@`, no `?`,
+            no `#`, and no reserved expansion such as `{+id}`. Example: `{base_url}/tickets/{id}`.
+        description:
+          type: string
+          description: Description of the link.
+      description: Maps a resource type to a URL template.
+    LinkTemplateSet:
+      type: object
+      required:
+        - app
+        - baseUrl
+        - templates
+      properties:
+        app:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: Key of the application.
+        baseUrl:
+          type: string
+          format: uri
+          pattern: ^(https://[A-Za-z0-9.-]+|http://localhost)(:[0-9]{1,5})?(/(?!\.{1,2}(/|$))[A-Za-z0-9._~%-]+)*$
+          description: |-
+            Value that replaces `{base_url}`. It is `https://` and a host, or `http://localhost` for
+            development, with an optional port and an optional path prefix, for example
+            `https://example.com/helpdesk`. A path segment is not `.` or `..`. It has no `/` at the end,
+            no user info, no query, and no fragment.
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkTemplate'
+          description: Link templates of the application.
+      description: The link templates of one application.
+    NotFound:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The resource does not exist.
+    PermissionDefinition:
+      type: object
+      required:
+        - key
+        - description
+      properties:
+        key:
+          allOf:
+            - $ref: '#/components/schemas/PermissionKey'
+          description: Key of the permission.
+        description:
+          type: string
+          description: Description of what the permission allows.
+      description: One permission that a service defines.
+    PermissionKey:
+      type: string
+      maxLength: 128
+      pattern: ^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$
+      description: Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+    PermissionManifest:
+      type: object
+      required:
+        - app
+        - permissions
+        - defaultRoles
+      properties:
+        app:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: Key of the application that owns the permissions.
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionDefinition'
+          description: Permissions that the application defines.
+        defaultRoles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleDefinition'
+          description: Default roles of the application.
+      description: The permissions and default roles that a service publishes.
+    PrincipalType:
+      type: string
+      enum:
+        - user
+        - agent
+        - service
+        - workflow
+      description: Type of a principal.
+    Problem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: Problem details for an HTTP API (RFC 9457).
+    ResourceType:
+      type: string
+      maxLength: 64
+      pattern: ^[a-z][a-z0-9_]*$
+      description: Type of a resource, for example `ticket`.
+    RoleDefinition:
+      type: object
+      required:
+        - key
+        - name
+        - description
+        - permissions
+      properties:
+        key:
+          allOf:
+            - $ref: '#/components/schemas/RoleKey'
+          description: Key of the role.
+        name:
+          type: string
+          description: Display name of the role.
+        description:
+          type: string
+          description: Description of the role.
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionKey'
+          description: Permissions that the role grants.
+      description: A default role of a service, with its permissions.
+    RoleKey:
+      type: string
+      maxLength: 64
+      pattern: ^[a-z][a-z0-9_]*$
+      description: Key of a role, for example `agent_admin`.
+    ServiceUnavailable:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The service is not available.
+    TooManyRequests:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The client sent too many requests.
+    Unauthorized:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request has no valid credentials.
+    UnprocessableContent:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request is well formed, but the server cannot process its content.
