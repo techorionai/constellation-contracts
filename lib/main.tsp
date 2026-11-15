@@ -5,3 +5,4 @@ import "./events.tsp";
 import "./links.tsp";
 import "./event-types.tsp";
 import "./common.tsp";
+import "./bad-format.tsp";

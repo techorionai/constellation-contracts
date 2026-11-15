@@ -1,3 +1,5 @@
+import "@typespec/http";
+using Http;
 namespace Constellation.Common;
 
 /** One event type that a service publishes. */
