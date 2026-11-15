@@ -266,7 +266,7 @@ A CloudEvents extension name has only lowercase letters and digits, with a maxim
 
 An application gives a `LinkTemplateSet`. A client builds a link from `baseUrl` and a template.
 
-- `baseUrl` is `https://` and a host, or `http://localhost` for development. It can have a port. It has no path, no user info, no query, and no fragment.
+- `baseUrl` is `https://` and a host, or `http://localhost` for development. It can have a port. It can have a path prefix, for example `https://example.com/helpdesk`. A path segment is not `.` or `..`. It has no `/` at the end, no user info, no query, and no fragment.
 - A `template` starts with `{base_url}/`. It is an RFC 6570 level 1 path template. It has no `..`, no `@`, no `?`, no `#`, and no reserved expansion such as `{+id}`.
 - A consumer MUST percent-encode each variable value before it puts the value in the template.
 - A consumer MUST compare the host of the final URL with the host of `baseUrl`. If the hosts are not equal, the consumer MUST NOT use the link.

@@ -39,6 +39,26 @@
           "template": "{base_url}/tickets/{id}/comments/{comment_id}"
         }
       ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/helpdesk",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "http://localhost:8080/helpdesk",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
     }
   ],
   "invalid": [
@@ -174,6 +194,56 @@
     {
       "app": "helpdesk",
       "baseUrl": "http://localhost.evil.example",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/helpdesk/",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/../admin",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/./x",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com/a/..",
+      "templates": [
+        {
+          "resourceType": "ticket",
+          "template": "{base_url}/tickets/{id}"
+        }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://example.com//x",
       "templates": [
         {
           "resourceType": "ticket",

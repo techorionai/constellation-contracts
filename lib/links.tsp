@@ -32,9 +32,11 @@ model LinkTemplateSet {
 
   /**
    * Value that replaces `{base_url}`. It is `https://` and a host, or `http://localhost` for
-   * development, with an optional port. It has no path, no user info, no query, and no fragment.
+   * development, with an optional port and an optional path prefix, for example
+   * `https://example.com/helpdesk`. A path segment is not `.` or `..`. It has no `/` at the end,
+   * no user info, no query, and no fragment.
    */
-  @pattern("^(https://[A-Za-z0-9.-]+|http://localhost)(:[0-9]{1,5})?$")
+  @pattern("^(https://[A-Za-z0-9.-]+|http://localhost)(:[0-9]{1,5})?(/(?!\\.{1,2}(/|$))[A-Za-z0-9._~%-]+)*$")
   baseUrl: url;
 
   /** Link templates of the application. */
