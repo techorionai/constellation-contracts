@@ -131,4 +131,47 @@ describe("limit values", () => {
     expect(validateEvent(event("a".repeat(129), "s"))).toBe(false);
     expect(validateEvent(event("a", "s".repeat(257)))).toBe(false);
   });
+
+  // R7, R13
+  it("R7, R13: minimum lengths, source format, and traceparent pattern", () => {
+    const base = {
+      specversion: "1.0",
+      id: "evt-1",
+      source: "/helpdesk",
+      type: "helpdesk.ticket.created",
+      time: "2026-11-15T10:00:00Z",
+      datacontenttype: "application/json",
+      data: {},
+      actor: "usr_1",
+      actortype: "user",
+    };
+    const validate = check("CloudEventEnvelope");
+    expect(validate(base)).toBe(true);
+    const trace = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+    expect(validate({ ...base, traceparent: trace })).toBe(true);
+    expect(validate({ ...base, subject: "s".repeat(256) })).toBe(true);
+    expect(validate({ ...base, act: "a".repeat(128), acttype: "agent" })).toBe(
+      true,
+    );
+    expect(validate({ ...base, actor: "a".repeat(128) })).toBe(true);
+
+    const invalid: Record<string, unknown>[] = [
+      { id: "" },
+      { source: "" },
+      { source: "a b c" },
+      { subject: "" },
+      { subject: "s".repeat(257) },
+      { actor: "" },
+      { actor: "a".repeat(129) },
+      { actor: "a".repeat(1_000_000) },
+      { act: "", acttype: "agent" },
+      { act: "a".repeat(129), acttype: "agent" },
+      { traceparent: "x" },
+      { traceparent: trace.toUpperCase() },
+      { traceparent: `${trace}-extra` },
+    ];
+    for (const change of invalid) {
+      expect(validate({ ...base, ...change }), JSON.stringify(change).slice(0, 60)).toBe(false);
+    }
+  });
 });

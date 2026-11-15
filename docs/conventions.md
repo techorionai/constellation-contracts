@@ -244,19 +244,21 @@ The event envelope follows CloudEvents 1.0 in JSON format.
 | Attribute | Required | Rule |
 | --------- | -------- | ---- |
 | `specversion` | Yes | Always `1.0`. |
-| `id` | Yes | Unique for each `source`. Maximum 128 characters. |
-| `source` | Yes | URI reference, for example `/helpdesk`. Maximum 256 characters. |
+| `id` | Yes | Unique for each `source`. From 1 to 128 characters. |
+| `source` | Yes | URI reference, for example `/helpdesk`. From 1 to 256 characters. |
 | `type` | Yes | An `EventType`. |
 | `time` | Yes | Date and time in UTC. |
-| `subject` | No | ID of the resource, for example the ticket ID. |
+| `subject` | No | ID of the resource, for example the ticket ID. From 1 to 256 characters. |
 | `datacontenttype` | Yes | Always `application/json`. |
 | `dataschema` | No | URI of the schema of `data`. |
 | `data` | Yes | The data of the event. |
-| `actor` | Yes | The `sub` of the token: the ID of the principal. |
+| `actor` | Yes | The `sub` of the token: the ID of the principal. From 1 to 128 characters. |
 | `actortype` | Yes | `user`, `agent`, `service`, or `workflow`. |
-| `act` | No | The `act` of the token: the agent that acts for the user. |
-| `acttype` | No | The type of the principal in `act`. |
-| `traceparent` | No | W3C trace context. |
+| `act` | No | The `act` of the token: the agent that acts for the user. From 1 to 128 characters. Set it together with `acttype`. |
+| `acttype` | No | The type of the principal in `act`. Set it together with `act`. |
+| `traceparent` | No | W3C trace context, in the form `00-<32 hex>-<16 hex>-<2 hex>` with lowercase hex digits. |
+
+`act` and `acttype` go together. A producer sets both or neither. The schema cannot express this rule, so the events service rejects an event that has only one of them. The events service sets `actor` and `act` from the verified token. A producer must not set them from request data.
 
 A CloudEvents extension name has only lowercase letters and digits, with a maximum of 20 characters.
 

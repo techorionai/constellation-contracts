@@ -21,11 +21,14 @@ model CloudEvent<T> {
   specversion: "1.0";
 
   /** ID of the event. Unique for each `source`. */
+  @minLength(1)
   @maxLength(128)
   id: string;
 
   /** URI reference of the service that made the event, for example `/helpdesk`. */
+  @minLength(1)
   @maxLength(256)
+  @format("uri-reference")
   source: string;
 
   /** Type of the event. */
@@ -35,6 +38,8 @@ model CloudEvent<T> {
   time: utcDateTime;
 
   /** ID of the resource, for example the ticket ID. */
+  @minLength(1)
+  @maxLength(256)
   subject?: string;
 
   /** Media type of `data`. */
@@ -47,18 +52,23 @@ model CloudEvent<T> {
   data: T;
 
   /** The `sub` of the token: the ID of the principal. */
+  @minLength(1)
+  @maxLength(128)
   actor: string;
 
   /** Type of the principal in `actor`. */
   actortype: PrincipalType;
 
   /** The `act` of the token: the agent that acts for the user. */
+  @minLength(1)
+  @maxLength(128)
   act?: string;
 
-  /** Type of the principal in `act`. */
+  /** Type of the principal in `act`. Set `act` and `acttype` together, or set neither. */
   acttype?: PrincipalType;
 
   /** W3C trace context (CloudEvents distributed tracing extension). */
+  @pattern("^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$")
   traceparent?: string;
 }
 

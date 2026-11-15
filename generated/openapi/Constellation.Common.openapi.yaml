@@ -36,11 +36,14 @@ components:
           description: CloudEvents version.
         id:
           type: string
+          minLength: 1
           maxLength: 128
           description: ID of the event. Unique for each `source`.
         source:
           type: string
+          minLength: 1
           maxLength: 256
+          format: uri-reference
           description: URI reference of the service that made the event, for example `/helpdesk`.
         type:
           allOf:
@@ -52,6 +55,8 @@ components:
           description: Time when the event happened.
         subject:
           type: string
+          minLength: 1
+          maxLength: 256
           description: ID of the resource, for example the ticket ID.
         datacontenttype:
           type: string
@@ -68,6 +73,8 @@ components:
           description: Data of the event.
         actor:
           type: string
+          minLength: 1
+          maxLength: 128
           description: 'The `sub` of the token: the ID of the principal.'
         actortype:
           allOf:
@@ -75,13 +82,16 @@ components:
           description: Type of the principal in `actor`.
         act:
           type: string
+          minLength: 1
+          maxLength: 128
           description: 'The `act` of the token: the agent that acts for the user.'
         acttype:
           allOf:
             - $ref: '#/components/schemas/PrincipalType'
-          description: Type of the principal in `act`.
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
         traceparent:
           type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
           description: W3C trace context (CloudEvents distributed tracing extension).
       description: A CloudEvent when the type of `data` is not known.
     Conflict:

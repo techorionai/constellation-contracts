@@ -12,7 +12,9 @@ describe("examples in docs/conventions.md", () => {
 
   // U16
   it("U16: each example block compiles with no diagnostics", async () => {
-    const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
+    const text = (
+      await readFile(join(root, "docs", "conventions.md"), "utf8")
+    ).replaceAll("\r\n", "\n");
     const blocks = [...text.matchAll(/^```tsp example\n([\s\S]*?)^```$/gm)].map(
       (match) => match[1],
     );
