@@ -1,9 +1,15 @@
 import { readFile, readdir } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { basename, join, relative } from "node:path";
 
 export const maxLines = 250;
 
-const declaration = /^\s*(model|op|interface|enum|union|scalar|alias)\b/m;
+/**
+ * A declaration at the start of a statement. A statement starts at the start of
+ * the text, after a line break, after a semicolon, or after a brace.
+ * Decorators can come before the keyword, on the same line or on other lines.
+ */
+const declaration =
+  /(?:^|[\n;{}])\s*(?:@[\w.]+(?:\([^)]*\))?\s*)*(?:extern\s+)?(model|op|interface|enum|union|scalar|alias)\b/;
 
 /** Remove block comments (also doc comments) and line comments. */
 function stripComments(text: string): string {
@@ -57,7 +63,7 @@ export async function checkMainFiles(
 ): Promise<string[]> {
   const problems: string[] = [];
   for (const file of files) {
-    if (!file.endsWith("main.tsp")) continue;
+    if (basename(file) !== "main.tsp") continue;
     const text = stripComments(await readFile(file, "utf8"));
     const match = declaration.exec(text);
     if (match) {

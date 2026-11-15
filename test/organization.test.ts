@@ -68,4 +68,44 @@ describe("file organization rules", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  // R18
+  it("R18: the check finds a declaration after a decorator or a semicolon", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "contracts-main-"));
+    try {
+      const file = join(dir, "main.tsp");
+      const cases: [string, string][] = [
+        ['@doc("x") model Bad {}', "model"],
+        ['@doc("x")\n@friendlyName("Bad")\nscalar Bad extends string;', "scalar"],
+        ['import "./a.tsp"; model Bad {}', "model"],
+        ["namespace A { model Bad {} }", "model"],
+        ["alias Bad = string;", "alias"],
+      ];
+      for (const [text, statement] of cases) {
+        await writeFile(file, `${text}\n`);
+        expect(await checkMainFiles([file], dir), text).toEqual([
+          `main.tsp: has a '${statement}' statement`,
+        ]);
+      }
+      await writeFile(
+        file,
+        '// model in a line comment\nimport "./a.tsp";\nusing Models;\n',
+      );
+      expect(await checkMainFiles([file], dir)).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  // R18
+  it("R18: the check ignores a file with a name that ends in main.tsp", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "contracts-main-"));
+    try {
+      const file = join(dir, "xmain.tsp");
+      await writeFile(file, "model Fine {}\n");
+      expect(await checkMainFiles([file], dir)).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });
