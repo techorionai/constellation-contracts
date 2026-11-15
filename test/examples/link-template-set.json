@@ -1,0 +1,31 @@
+{
+  "valid": [
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        { "resourceType": "ticket", "template": "{base_url}/tickets/{id}" }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "app": "helpdesk",
+      "templates": [
+        { "resourceType": "ticket", "template": "{base_url}/tickets/{id}" }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [
+        { "resourceType": "Ticket", "template": "{base_url}/tickets/{id}" }
+      ]
+    },
+    {
+      "app": "helpdesk",
+      "baseUrl": "https://helpdesk.example.com",
+      "templates": [{ "resourceType": "ticket", "template": "/tickets/{id}" }]
+    }
+  ]
+}

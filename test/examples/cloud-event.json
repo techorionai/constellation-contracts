@@ -1,0 +1,64 @@
+{
+  "valid": [
+    {
+      "specversion": "1.0",
+      "id": "evt-001",
+      "source": "/helpdesk",
+      "type": "helpdesk.ticket.created",
+      "time": "2026-11-15T10:00:00Z",
+      "subject": "ticket-1",
+      "datacontenttype": "application/json",
+      "data": { "ticketId": "ticket-1" },
+      "actor": "usr_1",
+      "actortype": "user",
+      "traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt-002",
+      "source": "/helpdesk",
+      "type": "helpdesk.ticket.created",
+      "time": "2026-11-15T10:00:00Z",
+      "datacontenttype": "application/json",
+      "data": {},
+      "actor": "usr_1",
+      "actortype": "user",
+      "act": "agt_1",
+      "acttype": "agent"
+    }
+  ],
+  "invalid": [
+    {
+      "specversion": "1.0",
+      "id": "evt-003",
+      "source": "/helpdesk",
+      "type": "helpdesk.ticket.created",
+      "time": "2026-11-15T10:00:00Z",
+      "datacontenttype": "application/json",
+      "data": {},
+      "actortype": "user"
+    },
+    {
+      "specversion": "1.0",
+      "id": "evt-004",
+      "source": "/helpdesk",
+      "type": "helpdesk.ticket.created",
+      "time": "2026-11-15T10:00:00Z",
+      "datacontenttype": "application/json",
+      "data": {},
+      "actor": "usr_1",
+      "actortype": "robot"
+    },
+    {
+      "specversion": "0.3",
+      "id": "evt-005",
+      "source": "/helpdesk",
+      "type": "helpdesk.ticket.created",
+      "time": "2026-11-15T10:00:00Z",
+      "datacontenttype": "application/json",
+      "data": {},
+      "actor": "usr_1",
+      "actortype": "user"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "valid": [
+    {
+      "app": "customer_portal",
+      "permissions": [
+        {
+          "key": "customer_portal:ticket:write",
+          "description": "Write tickets."
+        }
+      ],
+      "defaultRoles": [
+        {
+          "key": "agent_admin",
+          "name": "Agent admin",
+          "description": "Administrator of agents.",
+          "permissions": ["customer_portal:ticket:write"]
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "app": "customer_portal",
+      "permissions": [{ "key": "helpdesk:ticket", "description": "Bad key." }],
+      "defaultRoles": []
+    },
+    {
+      "app": "customer_portal",
+      "permissions": [
+        { "key": "Helpdesk:ticket:write", "description": "Bad key." }
+      ],
+      "defaultRoles": []
+    },
+    {
+      "app": "customer-portal",
+      "permissions": [],
+      "defaultRoles": []
+    },
+    {
+      "app": "customer_portal",
+      "permissions": [],
+      "defaultRoles": [
+        {
+          "key": "Agent-Admin",
+          "name": "Agent admin",
+          "description": "Bad role key.",
+          "permissions": []
+        }
+      ]
+    },
+    {
+      "app": "customer_portal",
+      "permissions": []
+    }
+  ]
+}
