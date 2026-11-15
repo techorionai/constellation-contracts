@@ -105,7 +105,9 @@ model TooManyRequests extends Problem {
   @statusCode statusCode: 429;
 
   /** Seconds to wait before the next request. */
-  @header("Retry-After") retryAfter: int32;
+  @minValue(0)
+  @header("Retry-After")
+  retryAfter: int32;
 }
 
 /** The server has an internal error. */

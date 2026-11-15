@@ -59,4 +59,10 @@ describe("error model", () => {
     const response = doc.paths["/widgets/too-many"].get.responses["429"];
     expect(Object.keys(response.headers)).toContain("Retry-After");
   });
+
+  // R16
+  it("R16: the Retry-After header has the minimum 0", () => {
+    const response = doc.paths["/widgets/too-many"].get.responses["429"];
+    expect(response.headers["Retry-After"].schema.minimum).toBe(0);
+  });
 });
