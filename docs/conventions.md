@@ -33,7 +33,7 @@ All library files use the blockless namespace `namespace Constellation.Common;`.
 
 - Service namespace: `Constellation.<Service>`, for example `Constellation.Identity`. Folder: `services/<service>/`.
 - A service namespace does not change after its first release. A new name changes the file name and breaks the URL of each consumer.
-- Route prefix: `/v1` on each service namespace.
+- Route prefix: `/v1` on each service namespace. A service that has OAuth endpoints puts `@route("/v1/<resource>")` on each interface in place of the namespace prefix. Read the "OAuth endpoints" section.
 - Models and enums: PascalCase. Properties and query parameters: camelCase. String literal values: lower snake case. File names: kebab case.
 - Each model, property, and operation has a doc comment (`/** */`).
 - Each operation returns its success type or types, plus the error union that applies.
@@ -157,6 +157,65 @@ interface Tickets {
 }
 ```
 
+## Security
+
+- An API with authentication declares the scheme `BearerAuth` with `@useAuth(BearerAuth)` on the service namespace. All operations then need a bearer access token.
+- An operation with no authentication has `@useAuth(NoAuth)`. Examples: discovery documents and the OAuth token endpoint.
+- A protected operation lists the permissions that it needs in the extension `x-required-scopes`. The value is an array of `PermissionKey` values. OpenAPI scope lists are static, but permission keys are dynamic, so the extension carries them. An operation that needs no permission has an empty array.
+- The access token `scope` claim has permission keys only. The type `ScopeString` holds them. OIDC scopes (`openid`, `profile`, `email`, `offline_access`) go only in the request `scope` of an authorize or token operation. The type `RequestScopeString` holds them.
+
+This is a complete example. The tests compile it.
+
+```tsp example
+import "@typespec/http";
+import "@typespec/openapi";
+import "./lib";
+
+using Http;
+using OpenAPI;
+using Constellation.Common;
+
+/** The notes service API. */
+@service(#{ title: "Constellation Notes" })
+@useAuth(BearerAuth)
+namespace Constellation.Notes;
+
+/** A note. */
+model Note {
+  /** ID of the note. */
+  id: string;
+}
+
+/** Operations on notes. */
+@route("/v1/notes")
+interface Notes {
+  /** Get one note. */
+  @extension("x-required-scopes", #["notes:note:read"])
+  @route("/{id}")
+  @get
+  get(@path id: string): Note | NotFound | CommonErrors;
+}
+```
+
+## OAuth endpoints
+
+OAuth 2.0 and OIDC clients expect standard paths and standard errors. Thus the OAuth endpoints are an exception to the rules for paths and errors.
+
+- An OAuth or discovery endpoint has the standard path with no `/v1` prefix. Examples: `/oauth/token` and `/.well-known/jwks.json`.
+- Its error body is the RFC 6749 form `{error, error_description}` with the content type `application/json`. It is not a `Problem`.
+- A protected resource endpoint of OAuth, for example `userinfo`, gives a `WWW-Authenticate` header on 401 and 403 (RFC 6750) and no body.
+- The field names of an OAuth model are in snake case, as the RFCs require.
+- TypeSpec cannot remove a namespace prefix. Thus a service with OAuth endpoints has no `@route` on its namespace. Each interface has its own `@route`. A `/v1` interface uses `@route("/v1/<resource>")`. An OAuth interface uses its standard path.
+- All other operations of the service follow the normal rules: `/v1` and `Problem`.
+
+## Form bodies
+
+A request body of type `application/x-www-form-urlencoded` uses `@header contentType: "application/x-www-form-urlencoded"` and `@body` with a model. The OAuth token and revoke operations are examples. Keep the form models open, so that a later release can add a field.
+
+## Manifest files
+
+A consumer copies files from a release tag. A TypeSpec constant is not in the generated OpenAPI file. Thus a service with a fixed permission manifest keeps it in `services/<service>/manifest.json`. The file must be valid against `PermissionManifest`. The service embeds a copy of the file. The identity service uses `services/identity/manifest.json`.
+
 ## Shared models
 
 | Model | File | Use it when |
@@ -168,6 +227,7 @@ interface Tickets {
 | `LinkTemplate`, `LinkTemplateSet`, `ResourceType` | `lib/links.tsp` | An application maps resource types to URLs. |
 | `PermissionManifest`, `PermissionDefinition`, `RoleDefinition`, `AppKey`, `PermissionKey`, `RoleKey` | `lib/permissions.tsp` | A service publishes its permissions and default roles. |
 | `EventTypeRegistration`, `EventTypeDefinition` | `lib/event-types.tsp` | A service registers its event types with the events service. |
+| `AccessTokenClaims`, `ActorClaim`, `ScopeString`, `RequestScopeString`, `RoleRef`, `AppKeyList` | `lib/auth.tsp` | A service or a client reads or checks an access token, a scope list, or a role reference. |
 
 Do not use visibility decorators in the shared models. Then each model has one schema name.
 
