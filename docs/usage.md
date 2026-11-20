@@ -10,6 +10,7 @@ This repository makes OpenAPI files only. It does not make Go code. Each consume
 | ---- | ------- |
 | `Constellation.Common.openapi.yaml` | The shared models only. It has no paths. |
 | `Constellation.<Service>.openapi.yaml` | The routes of the service, and the shared models that the service uses. |
+| `services/<service>/manifest.json` | The permission manifest of a service, if the service has a fixed manifest. Example: `services/identity/manifest.json`. A consumer copies it from the same tag as the OpenAPI file. |
 
 Each service file is complete. A consumer needs only the file of its service. It does not need `Constellation.Common.openapi.yaml`.
 
@@ -32,7 +33,7 @@ The role of each consumer:
 | Consumer | Files that it copies | Code that it generates |
 | -------- | -------------------- | ---------------------- |
 | `constellation-platform-go` | The file of each platform service, and `Constellation.Common.openapi.yaml` | The Go clients of all platform services, and the common Go types |
-| A platform service, for example `constellation-identity` | The file of its own service | Its Go server stubs and types |
+| A platform service, for example `constellation-identity` | The file of its own service, and its manifest file if it has one | Its Go server stubs and types |
 | An application, for example `constellation-helpdesk` | The file of its own API, when its API is in this repository | Its Go server stubs. It does not generate a client for a platform service. It uses the clients of `constellation-platform-go`. |
 
 Steps:

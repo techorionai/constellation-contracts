@@ -1,0 +1,43 @@
+{
+  "valid": [
+    {
+      "keys": [
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+          "y": "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0",
+          "kid": "key-1",
+          "use": "sig",
+          "alg": "ES256"
+        }
+      ]
+    },
+    { "keys": [] }
+  ],
+  "invalid": [
+    {
+      "keys": [
+        {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+          "y": "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0",
+          "kid": "key-1",
+          "d": "private"
+        }
+      ]
+    },
+    {
+      "keys": [
+        {
+          "kty": "RSA",
+          "crv": "P-256",
+          "x": "a",
+          "y": "b",
+          "kid": "key-1"
+        }
+      ]
+    }
+  ]
+}

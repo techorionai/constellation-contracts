@@ -1,0 +1,86 @@
+{
+  "valid": [
+    {
+      "iss": "https://identity.example.com",
+      "sub": "svc_helpdesk",
+      "aud": "identity",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "nbf": 1790000000,
+      "jti": "token-1",
+      "client_id": "svc_helpdesk",
+      "scope": "identity:manifest:publish",
+      "principal_type": "service"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": ["helpdesk"],
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "nbf": 1790000000,
+      "jti": "token-2",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read helpdesk:ticket:write",
+      "principal_type": "user",
+      "act": { "sub": "agent-1", "principal_type": "agent" }
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-3",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "user"
+    }
+  ],
+  "invalid": [
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-4",
+      "client_id": "web_helpdesk",
+      "scope": "Bad_Key",
+      "principal_type": "user"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-5",
+      "client_id": "web_helpdesk",
+      "scope": "openid helpdesk:ticket:read",
+      "principal_type": "user"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-6",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "robot"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": [],
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-7",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "user"
+    }
+  ]
+}

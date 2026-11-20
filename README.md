@@ -2,13 +2,15 @@
 
 TypeSpec contracts for the Constellation platform. This repository holds the TypeSpec sources of the platform service APIs, the shared models, and the generated OpenAPI files. It does not make Go code.
 
-Shared models: errors (RFC 9457), cursor pagination, the CloudEvents envelope, link templates, the permission manifest, and the event type registration.
+Shared models: errors (RFC 9457), cursor pagination, the CloudEvents envelope, link templates, the permission manifest, the event type registration, and the access token claims.
+
+Services: identity (`Constellation.Identity`). The identity permission manifest is in `services/identity/manifest.json`.
 
 ## Layout
 
 ```txt
 lib/                 Shared models
-services/            One folder for each service
+services/            One folder for each service, with an optional manifest.json
 generated/openapi/   Generated OpenAPI 3.0.0 files, one for each service
 docs/                Conventions, usage, and the TypeSpec guide
 test/                Tests, fixtures, and example documents

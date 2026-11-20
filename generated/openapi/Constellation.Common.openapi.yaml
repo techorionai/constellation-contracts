@@ -6,11 +6,91 @@ tags: []
 paths: {}
 components:
   schemas:
+    AccessTokenClaims:
+      type: object
+      required:
+        - iss
+        - sub
+        - aud
+        - exp
+        - iat
+        - jti
+        - client_id
+        - scope
+        - principal_type
+      properties:
+        iss:
+          type: string
+          format: uri
+          description: 'Issuer of the token: the URL of the identity service.'
+        sub:
+          type: string
+          description: 'ID of the principal: a user, a service, an agent, or a workflow.'
+        aud:
+          anyOf:
+            - $ref: '#/components/schemas/AppKey'
+            - $ref: '#/components/schemas/AppKeyList'
+          description: 'Audience of the token: one application key, or an array of application keys.'
+        exp:
+          type: integer
+          format: int64
+          description: Expiry time in seconds since the Unix epoch.
+        iat:
+          type: integer
+          format: int64
+          description: Issue time in seconds since the Unix epoch.
+        nbf:
+          type: integer
+          format: int64
+          description: Time in seconds since the Unix epoch before which a verifier must not accept the token.
+        jti:
+          type: string
+          description: Unique ID of the token.
+        client_id:
+          type: string
+          description: ID of the client that asked for the token.
+        scope:
+          allOf:
+            - $ref: '#/components/schemas/ScopeString'
+          description: Permission keys that the token grants.
+        principal_type:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `sub`.
+        act:
+          allOf:
+            - $ref: '#/components/schemas/ActorClaim'
+          description: The agent that acts for the subject. Reserved for token exchange.
+      description: |-
+        Claims of an access token (RFC 9068).
+        The JWT header `typ` is `at+jwt`. The header `alg` is `ES256`.
+        The identity service writes `aud` as one string and always sets `nbf`.
+        A verifier accepts both forms of `aud`.
+    ActorClaim:
+      type: object
+      required:
+        - sub
+        - principal_type
+      properties:
+        sub:
+          type: string
+          description: ID of the acting principal.
+        principal_type:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the acting principal.
+      description: The agent that acts for the subject of a token.
     AppKey:
       type: string
       maxLength: 32
       pattern: ^[a-z][a-z0-9_]*$
       description: Key of an application, for example `helpdesk` or `customer_portal`.
+    AppKeyList:
+      type: array
+      items:
+        $ref: '#/components/schemas/AppKey'
+      minItems: 1
+      description: One or more application keys. Use it as the audience of a token.
     BadRequest:
       type: object
       allOf:
@@ -263,8 +343,10 @@ components:
     PermissionKey:
       type: string
       maxLength: 128
-      pattern: ^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$
-      description: Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+      pattern: ^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$
+      description: |-
+        Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+        The only exception is `identity:admin`, the permission of full administration of the identity service.
     PermissionManifest:
       type: object
       required:
@@ -337,6 +419,13 @@ components:
             $ref: '#/components/schemas/FieldError'
           description: Field errors. Only for validation errors.
       description: Problem details for an HTTP API (RFC 9457).
+    RequestScopeString:
+      type: string
+      maxLength: 4096
+      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access))*$'
+      description: |-
+        Space-separated scope values in a token request or an authorize request.
+        Each value is a permission key or one of `openid`, `profile`, `email`, and `offline_access`.
     ResourceType:
       type: string
       maxLength: 64
@@ -371,6 +460,18 @@ components:
       maxLength: 64
       pattern: ^[a-z][a-z0-9_]*$
       description: Key of a role, for example `agent_admin`.
+    RoleRef:
+      type: string
+      maxLength: 97
+      pattern: ^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$
+      description: Reference to a role in the form `<app>:<role>`, for example `helpdesk:agent`.
+    ScopeString:
+      type: string
+      maxLength: 4096
+      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin))*$'
+      description: |-
+        Space-separated permission keys, for example `helpdesk:ticket:read helpdesk:ticket:write`.
+        It holds permission keys only. It never holds an OIDC scope.
     ServiceUnavailable:
       type: object
       allOf:
