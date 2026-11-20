@@ -4,7 +4,7 @@ namespace Constellation.Common;
  * Space-separated permission keys, for example `helpdesk:ticket:read helpdesk:ticket:write`.
  * It holds permission keys only. It never holds an OIDC scope.
  */
-@pattern("^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*(?: [a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*)*$")
+@pattern("^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin))*$")
 @maxLength(4096)
 @friendlyName("ScopeString")
 scalar ScopeString extends string;
@@ -13,7 +13,7 @@ scalar ScopeString extends string;
  * Space-separated scope values in a token request or an authorize request.
  * Each value is a permission key or one of `openid`, `profile`, `email`, and `offline_access`.
  */
-@pattern("^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|openid|profile|email|offline_access)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|openid|profile|email|offline_access))*$")
+@pattern("^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access))*$")
 @maxLength(4096)
 @friendlyName("RequestScopeString")
 scalar RequestScopeString extends string;

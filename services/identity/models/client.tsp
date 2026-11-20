@@ -86,14 +86,11 @@ model ClientCreate {
   jwk?: JsonWebKey;
 }
 
-/** Request to change a client. A field that is not present does not change. */
+/** Request to change a client. A field that is not present does not change. It has no `app`, because the `app` of a client cannot change. */
 @friendlyName("ClientUpdate")
 model ClientUpdate {
   /** The type cannot change. A different value gives `client_type_immutable`. */
   type?: ClientType;
-
-  /** Application of the client. */
-  app?: AppKey;
 
   /** Display name of the client. */
   name?: string;

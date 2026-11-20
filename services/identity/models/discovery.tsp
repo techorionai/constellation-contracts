@@ -54,6 +54,8 @@ model DiscoveryDocument {
 /** Claims of the userinfo endpoint. */
 @friendlyName("UserInfo")
 model UserInfo {
+  ...NoStoreHeaders;
+
   /** ID of the user. */
   `sub`: string;
 

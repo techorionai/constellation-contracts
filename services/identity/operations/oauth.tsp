@@ -13,6 +13,7 @@ interface OAuth {
   /**
    * Get an access token. The `grant_type` is `client_credentials`, `authorization_code`, or `refresh_token`.
    * The `scope` of the request can have OIDC scopes. The `scope` of the response has permission keys only.
+   * The response has the headers `Cache-Control: no-store` and `Pragma: no-cache`.
    */
   @useAuth(NoAuth)
   @route("/token")
@@ -43,6 +44,7 @@ interface OAuth {
    * It accepts a user access token of the identity issuer with any audience.
    * All clients are first-party, so the response has all four claims.
    * A service token gets 403 with `error="insufficient_scope"`.
+   * The response has the headers `Cache-Control: no-store` and `Pragma: no-cache`.
    */
   @route("/userinfo")
   @get

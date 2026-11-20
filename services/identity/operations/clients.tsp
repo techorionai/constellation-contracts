@@ -8,9 +8,10 @@ namespace Constellation.Identity;
 @route("/v1/clients")
 interface Clients {
   /**
-   * Create a client. Error codes of `UnprocessableContent`: `invalid_redirect_uri` and `app_reserved`.
+   * Create a client. The token needs `identity:client:write` and `identity:admin`.
+   * Error codes of `UnprocessableContent`: `invalid_redirect_uri` and `app_reserved`.
    */
-  @extension("x-required-scopes", #["identity:client:write"])
+  @extension("x-required-scopes", #["identity:client:write", "identity:admin"])
   @post
   create(@body client: ClientCreate):
     | {
@@ -33,10 +34,11 @@ interface Clients {
   get(@path clientId: string): Client | NotFound | CommonErrors;
 
   /**
-   * Change a client. Error code of `Conflict`: `client_managed_by_config`.
+   * Change a client. The token needs `identity:client:write` and `identity:admin`.
+   * The `app` of a client cannot change. Error code of `Conflict`: `client_managed_by_config`.
    * Error codes of `UnprocessableContent`: `invalid_redirect_uri`, `client_type_immutable`, and `app_reserved`.
    */
-  @extension("x-required-scopes", #["identity:client:write"])
+  @extension("x-required-scopes", #["identity:client:write", "identity:admin"])
   @route("/{clientId}")
   @patch
   update(@path clientId: string, @body update: ClientUpdate):

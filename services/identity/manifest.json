@@ -7,7 +7,7 @@
     },
     {
       "key": "identity:user:write",
-      "description": "Create, change, and disable users, and make invites."
+      "description": "Create, change, and disable users, and make invites for invited users."
     },
     {
       "key": "identity:role:read",
@@ -23,7 +23,11 @@
     },
     {
       "key": "identity:client:write",
-      "description": "Create, change, and disable clients and their keys."
+      "description": "Create, change, and disable clients and their keys. An operation with this permission also needs identity:admin."
+    },
+    {
+      "key": "identity:admin",
+      "description": "Full administration. Only the role admin holds it."
     },
     {
       "key": "identity:session:read",
@@ -50,6 +54,7 @@
         "identity:role:assign",
         "identity:client:read",
         "identity:client:write",
+        "identity:admin",
         "identity:session:read",
         "identity:session:revoke",
         "identity:manifest:publish"

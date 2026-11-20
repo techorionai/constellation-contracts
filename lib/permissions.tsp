@@ -6,8 +6,11 @@ namespace Constellation.Common;
 @friendlyName("AppKey")
 scalar AppKey extends string;
 
-/** Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`. */
-@pattern("^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$")
+/**
+ * Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+ * The only exception is `identity:admin`, the permission of full administration of the identity service.
+ */
+@pattern("^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$")
 @maxLength(128)
 @friendlyName("PermissionKey")
 scalar PermissionKey extends string;

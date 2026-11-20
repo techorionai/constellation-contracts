@@ -229,10 +229,26 @@ paths:
       description: |-
         Get an access token. The `grant_type` is `client_credentials`, `authorization_code`, or `refresh_token`.
         The `scope` of the request can have OIDC scopes. The `scope` of the response has permission keys only.
+        The response has the headers `Cache-Control: no-store` and `Pragma: no-cache`.
       parameters: []
       responses:
         '200':
           description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/json:
               schema:
@@ -289,10 +305,26 @@ paths:
         It accepts a user access token of the identity issuer with any audience.
         All clients are first-party, so the response has all four claims.
         A service token gets 403 with `error="insufficient_scope"`.
+        The response has the headers `Cache-Control: no-store` and `Pragma: no-cache`.
       parameters: []
       responses:
         '200':
           description: The request has succeeded.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/json:
               schema:
@@ -306,7 +338,9 @@ paths:
               schema:
                 type: string
         '403':
-          description: The access token has the wrong type (RFC 6750). The response has no body.
+          description: |-
+            The access token does not have enough scope, or it is a service token on a user operation (RFC 6750).
+            The response has no body.
           headers:
             WWW-Authenticate:
               required: true
@@ -316,7 +350,9 @@ paths:
   /v1/clients:
     post:
       operationId: Clients_create
-      description: 'Create a client. Error codes of `UnprocessableContent`: `invalid_redirect_uri` and `app_reserved`.'
+      description: |-
+        Create a client. The token needs `identity:client:write` and `identity:admin`.
+        Error codes of `UnprocessableContent`: `invalid_redirect_uri` and `app_reserved`.
       parameters: []
       responses:
         '201':
@@ -363,6 +399,7 @@ paths:
               $ref: '#/components/schemas/ClientCreate'
       x-required-scopes:
         - identity:client:write
+        - identity:admin
     get:
       operationId: Clients_list
       description: List the clients.
@@ -454,7 +491,8 @@ paths:
     patch:
       operationId: Clients_update
       description: |-
-        Change a client. Error code of `Conflict`: `client_managed_by_config`.
+        Change a client. The token needs `identity:client:write` and `identity:admin`.
+        The `app` of a client cannot change. Error code of `Conflict`: `client_managed_by_config`.
         Error codes of `UnprocessableContent`: `invalid_redirect_uri`, `client_type_immutable`, and `app_reserved`.
       parameters:
         - name: clientId
@@ -519,11 +557,13 @@ paths:
               $ref: '#/components/schemas/ClientUpdate'
       x-required-scopes:
         - identity:client:write
+        - identity:admin
   /v1/clients/{clientId}/keys:
     post:
       operationId: ClientKeys_add
       description: |-
-        Add a public key to a service client. Error code of `Conflict`: `client_managed_by_config`.
+        Add a public key to a service client. The token needs `identity:client:write` and `identity:admin`.
+        Error code of `Conflict`: `client_managed_by_config`.
         Error codes of `UnprocessableContent`: `client_type_unsupported` and `invalid_jwk`.
       parameters:
         - name: clientId
@@ -588,10 +628,13 @@ paths:
               $ref: '#/components/schemas/JsonWebKey'
       x-required-scopes:
         - identity:client:write
+        - identity:admin
   /v1/clients/{clientId}/keys/{kid}:
     delete:
       operationId: ClientKeys_remove
-      description: 'Remove a key from a service client. Error code of `Conflict`: `client_managed_by_config`.'
+      description: |-
+        Remove a key from a service client. The token needs `identity:client:write` and `identity:admin`.
+        Error code of `Conflict`: `client_managed_by_config`.
       parameters:
         - name: clientId
           in: path
@@ -644,6 +687,7 @@ paths:
                 $ref: '#/components/schemas/InternalServerError'
       x-required-scopes:
         - identity:client:write
+        - identity:admin
   /v1/clients/{clientId}/roles:
     get:
       operationId: ClientRoles_list
@@ -1159,11 +1203,28 @@ paths:
   /v1/users:
     post:
       operationId: Users_create
-      description: 'Create a user and an invite. Error code of `Conflict`: `email_taken`.'
+      description: |-
+        Create a user and an invite. Error code of `Conflict`: `email_taken`.
+        Error code of `UnprocessableContent`: `invalid_user`. The email or the name breaks the rules of the identity service.
       parameters: []
       responses:
         '201':
           description: The request has succeeded and a new resource has been created as a result.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/json:
               schema:
@@ -1363,7 +1424,11 @@ paths:
   /v1/users/{userId}/invites:
     post:
       operationId: Invites_create
-      description: 'Create a new invite for a user. Error code of `Conflict`: `user_disabled`.'
+      description: |-
+        Create a new invite for a user. An invite is only for a user with the status `invited`.
+        An invite does not reset the password of an `active` user.
+        Error codes of `Conflict`: `user_not_invited` (the user is `active`)
+        and `user_disabled` (the user is `disabled`, and this code wins over `user_not_invited`).
       parameters:
         - name: userId
           in: path
@@ -1373,6 +1438,21 @@ paths:
       responses:
         '201':
           description: The request has succeeded and a new resource has been created as a result.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/json:
               schema:
@@ -1853,10 +1933,6 @@ components:
           allOf:
             - $ref: '#/components/schemas/ClientType'
           description: The type cannot change. A different value gives `client_type_immutable`.
-        app:
-          allOf:
-            - $ref: '#/components/schemas/AppKey'
-          description: Application of the client.
         name:
           type: string
           description: Display name of the client.
@@ -1873,7 +1949,7 @@ components:
         disabled:
           type: boolean
           description: True to disable the client.
-      description: Request to change a client. A field that is not present does not change.
+      description: Request to change a client. A field that is not present does not change. It has no `app`, because the `app` of a client cannot change.
     Conflict:
       type: object
       allOf:
@@ -2079,6 +2155,11 @@ components:
             $ref: '#/components/schemas/JsonWebKey'
           description: The public keys.
       description: A set of public keys in JWK format.
+    NoStoreHeaders:
+      type: object
+      description: |-
+        Response headers for a response that has a token, a secret, or personal data.
+        A cache must not keep the response (RFC 6749 section 5.1).
     NotFound:
       type: object
       allOf:
@@ -2133,8 +2214,10 @@ components:
     PermissionKey:
       type: string
       maxLength: 128
-      pattern: ^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$
-      description: Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+      pattern: ^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$
+      description: |-
+        Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+        The only exception is `identity:admin`, the permission of full administration of the identity service.
     PermissionManifest:
       type: object
       required:
@@ -2236,7 +2319,7 @@ components:
     RequestScopeString:
       type: string
       maxLength: 4096
-      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|openid|profile|email|offline_access)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|openid|profile|email|offline_access))*$'
+      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access))*$'
       description: |-
         Space-separated scope values in a token request or an authorize request.
         Each value is a permission key or one of `openid`, `profile`, `email`, and `offline_access`.
@@ -2382,7 +2465,7 @@ components:
     ScopeString:
       type: string
       maxLength: 4096
-      pattern: '^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*(?: [a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*)*$'
+      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin))*$'
       description: |-
         Space-separated permission keys, for example `helpdesk:ticket:read helpdesk:ticket:write`.
         It holds permission keys only. It never holds an OIDC scope.

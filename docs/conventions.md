@@ -161,7 +161,8 @@ interface Tickets {
 
 - An API with authentication declares the scheme `BearerAuth` with `@useAuth(BearerAuth)` on the service namespace. All operations then need a bearer access token.
 - An operation with no authentication has `@useAuth(NoAuth)`. Examples: discovery documents and the OAuth token endpoint.
-- A protected operation lists the permissions that it needs in the extension `x-required-scopes`. The value is an array of `PermissionKey` values. OpenAPI scope lists are static, but permission keys are dynamic, so the extension carries them. An operation that needs no permission has an empty array.
+- A protected operation lists the permissions that it needs in the extension `x-required-scopes`. The value is an array of `PermissionKey` values. OpenAPI scope lists are static, but permission keys are dynamic, so the extension carries them. An operation that needs no permission has an empty array. A list with more than one key means that the token must have all of them. The call fails with 403 if the token lacks one key.
+- A response that has a token, a secret, or personal data has the headers `Cache-Control: no-store` and `Pragma: no-cache`.
 - The access token `scope` claim has permission keys only. The type `ScopeString` holds them. OIDC scopes (`openid`, `profile`, `email`, `offline_access`) go only in the request `scope` of an authorize or token operation. The type `RequestScopeString` holds them.
 
 This is a complete example. The tests compile it.
@@ -290,7 +291,7 @@ Rules for the content of an error:
 | Type | Pattern | Maximum length | Example |
 | ---- | ------- | -------------- | ------- |
 | `AppKey` | `^[a-z][a-z0-9_]*$` | 32 | `customer_portal` |
-| `PermissionKey` | `<app>:<resource>:<action>`, each segment `[a-z][a-z0-9_]*` | 128 | `helpdesk:ticket:write` |
+| `PermissionKey` | `<app>:<resource>:<action>`, each segment `[a-z][a-z0-9_]*`. The one exception is `identity:admin`. | 128 | `helpdesk:ticket:write` |
 | `RoleKey` | `^[a-z][a-z0-9_]*$` | 64 | `agent_admin` |
 | `ResourceType` | `^[a-z][a-z0-9_]*$` | 64 | `ticket` |
 | `EventType` | Three or more segments, each `[a-z][a-z0-9_]*`, with a dot between the segments | 128 | `helpdesk.ticket.created` |

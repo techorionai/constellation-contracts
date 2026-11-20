@@ -50,7 +50,7 @@ describe("error model", () => {
     });
     expect(doc.components.schemas.PermissionKey.type).toBe("string");
     expect(doc.components.schemas.PermissionKey.pattern).toBe(
-      "^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$",
+      "^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$",
     );
   });
 

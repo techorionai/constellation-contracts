@@ -43,12 +43,12 @@ const rest: [string, string, string, string, string[]][] = [
   ["UserRoles_list", "get", "/v1/users/{userId}/roles", "200", ["identity:role:read"]],
   ["UserRoles_assign", "put", "/v1/users/{userId}/roles/{role}", "200", ["identity:role:assign"]],
   ["UserRoles_remove", "delete", "/v1/users/{userId}/roles/{role}", "204", ["identity:role:assign"]],
-  ["Clients_create", "post", "/v1/clients", "201", ["identity:client:write"]],
+  ["Clients_create", "post", "/v1/clients", "201", ["identity:client:write", "identity:admin"]],
   ["Clients_list", "get", "/v1/clients", "200", ["identity:client:read"]],
   ["Clients_get", "get", "/v1/clients/{clientId}", "200", ["identity:client:read"]],
-  ["Clients_update", "patch", "/v1/clients/{clientId}", "200", ["identity:client:write"]],
-  ["ClientKeys_add", "post", "/v1/clients/{clientId}/keys", "201", ["identity:client:write"]],
-  ["ClientKeys_remove", "delete", "/v1/clients/{clientId}/keys/{kid}", "204", ["identity:client:write"]],
+  ["Clients_update", "patch", "/v1/clients/{clientId}", "200", ["identity:client:write", "identity:admin"]],
+  ["ClientKeys_add", "post", "/v1/clients/{clientId}/keys", "201", ["identity:client:write", "identity:admin"]],
+  ["ClientKeys_remove", "delete", "/v1/clients/{clientId}/keys/{kid}", "204", ["identity:client:write", "identity:admin"]],
   ["ClientRoles_list", "get", "/v1/clients/{clientId}/roles", "200", ["identity:role:read"]],
   ["ClientRoles_assign", "put", "/v1/clients/{clientId}/roles/{role}", "200", ["identity:role:assign"]],
   ["ClientRoles_remove", "delete", "/v1/clients/{clientId}/roles/{role}", "204", ["identity:role:assign"]],
@@ -355,6 +355,7 @@ describe("identity contract", () => {
         "role:assign",
         "client:read",
         "client:write",
+        "admin",
         "session:read",
         "session:revoke",
         "manifest:publish",
@@ -366,6 +367,45 @@ describe("identity contract", () => {
     expect([...admin.permissions].sort()).toEqual([...keys].sort());
     const service = manifest.defaultRoles.find((r: Doc) => r.key === "service");
     expect(service.permissions).toEqual(["identity:manifest:publish"]);
+  });
+
+  // U25b
+  it("U25b: only the role admin has identity:admin", async () => {
+    const manifest = JSON.parse(
+      await readFile(join(root, "services", "identity", "manifest.json"), "utf8"),
+    );
+    expect(manifest.permissions.map((p: Doc) => p.key)).toContain("identity:admin");
+    const holders = manifest.defaultRoles
+      .filter((r: Doc) => r.permissions.includes("identity:admin"))
+      .map((r: Doc) => r.key);
+    expect(holders).toEqual(["admin"]);
+  });
+
+  // U25c
+  it("U25c: ClientUpdate has no app, and Invites_create has the invite codes", () => {
+    expect(doc.components.schemas.ClientUpdate.properties.app).toBeUndefined();
+    expect(doc.components.schemas.ClientCreate.properties.app).toBeDefined();
+    const conflict = byId["Invites_create"].op.responses["409"];
+    expect(conflict).toBeDefined();
+    const text = JSON.stringify(byId["Invites_create"].op.description);
+    expect(text).toContain("user_not_invited");
+    expect(text).toContain("user_disabled");
+    expect(byId["Users_create"].op.description).toContain("invalid_user");
+  });
+
+  // R23
+  it("R23: token, userinfo, invite, and user-created responses are not cached", () => {
+    const cases: [string, string][] = [
+      ["OAuth_token", "200"],
+      ["OAuth_userinfo", "200"],
+      ["Invites_create", "201"],
+      ["Users_create", "201"],
+    ];
+    for (const [id, status] of cases) {
+      const headers = byId[id].op.responses[status].headers;
+      expect(headers["Cache-Control"].schema.enum, id).toEqual(["no-store"]);
+      expect(headers["Pragma"].schema.enum, id).toEqual(["no-cache"]);
+    }
   });
 
   // U36

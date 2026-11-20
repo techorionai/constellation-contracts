@@ -343,8 +343,10 @@ components:
     PermissionKey:
       type: string
       maxLength: 128
-      pattern: ^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$
-      description: Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+      pattern: ^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$
+      description: |-
+        Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+        The only exception is `identity:admin`, the permission of full administration of the identity service.
     PermissionManifest:
       type: object
       required:
@@ -420,7 +422,7 @@ components:
     RequestScopeString:
       type: string
       maxLength: 4096
-      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|openid|profile|email|offline_access)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|openid|profile|email|offline_access))*$'
+      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin|openid|profile|email|offline_access))*$'
       description: |-
         Space-separated scope values in a token request or an authorize request.
         Each value is a permission key or one of `openid`, `profile`, `email`, and `offline_access`.
@@ -466,7 +468,7 @@ components:
     ScopeString:
       type: string
       maxLength: 4096
-      pattern: '^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*(?: [a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*)*$'
+      pattern: '^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)(?: (?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin))*$'
       description: |-
         Space-separated permission keys, for example `helpdesk:ticket:read helpdesk:ticket:write`.
         It holds permission keys only. It never holds an OIDC scope.

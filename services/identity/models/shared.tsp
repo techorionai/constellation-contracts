@@ -1,3 +1,5 @@
+using Http;
+
 namespace Constellation.Identity;
 
 /**
@@ -28,6 +30,19 @@ model JsonWebKey {
   alg?: "ES256";
 
   ...Record<never>;
+}
+
+/**
+ * Response headers for a response that has a token, a secret, or personal data.
+ * A cache must not keep the response (RFC 6749 section 5.1).
+ */
+@friendlyName("NoStoreHeaders")
+model NoStoreHeaders {
+  /** Cache rule. */
+  @header("Cache-Control") cacheControl: "no-store";
+
+  /** Cache rule for old HTTP/1.0 caches. */
+  @header("Pragma") pragma: "no-cache";
 }
 
 /** A set of public keys in JWK format. */

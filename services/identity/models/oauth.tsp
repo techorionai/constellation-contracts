@@ -53,6 +53,8 @@ model TokenRequest {
 /** Result of a successful token request. */
 @friendlyName("TokenResponse")
 model TokenResponse {
+  ...NoStoreHeaders;
+
   /** The access token. */
   @secret
   access_token: string;
@@ -152,7 +154,10 @@ model InvalidToken {
   @header("WWW-Authenticate") wwwAuthenticate: string;
 }
 
-/** The access token has the wrong type (RFC 6750). The response has no body. */
+/**
+ * The access token does not have enough scope, or it is a service token on a user operation (RFC 6750).
+ * The response has no body.
+ */
 @error
 @friendlyName("InsufficientScope")
 model InsufficientScope {

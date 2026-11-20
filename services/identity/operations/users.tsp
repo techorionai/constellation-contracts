@@ -7,11 +7,15 @@ namespace Constellation.Identity;
 /** Operations on users. */
 @route("/v1/users")
 interface Users {
-  /** Create a user and an invite. Error code of `Conflict`: `email_taken`. */
+  /**
+   * Create a user and an invite. Error code of `Conflict`: `email_taken`.
+   * Error code of `UnprocessableContent`: `invalid_user`. The email or the name breaks the rules of the identity service.
+   */
   @extension("x-required-scopes", #["identity:user:write"])
   @post
   create(@body user: UserCreate):
     | {
+        ...NoStoreHeaders;
         @statusCode _: 201;
         @body body: UserCreated;
       }
