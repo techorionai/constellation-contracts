@@ -69,7 +69,7 @@ export function makeAjv(): Ajv {
   addFormats(ajv);
   ajv.addFormat("int32", true);
   ajv.addFormat("int64", true);
-  for (const keyword of ["openapi", "info", "tags", "paths", "components"]) {
+  for (const keyword of ["openapi", "info", "tags", "paths", "components", "security"]) {
     ajv.addKeyword(keyword);
   }
   return ajv;

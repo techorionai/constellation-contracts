@@ -1,0 +1,31 @@
+{
+  "valid": [
+    {
+      "issuer": "https://identity.example.com",
+      "authorization_endpoint": "https://identity.example.com/oauth/authorize",
+      "token_endpoint": "https://identity.example.com/oauth/token",
+      "jwks_uri": "https://identity.example.com/.well-known/jwks.json",
+      "userinfo_endpoint": "https://identity.example.com/oauth/userinfo",
+      "revocation_endpoint": "https://identity.example.com/oauth/revoke",
+      "end_session_endpoint": "https://identity.example.com/oauth/end_session",
+      "response_types_supported": ["code"],
+      "grant_types_supported": [
+        "client_credentials",
+        "authorization_code",
+        "refresh_token"
+      ],
+      "subject_types_supported": ["public"],
+      "id_token_signing_alg_values_supported": ["ES256"],
+      "scopes_supported": ["openid", "profile", "email", "offline_access"],
+      "token_endpoint_auth_methods_supported": ["private_key_jwt", "none"],
+      "token_endpoint_auth_signing_alg_values_supported": ["ES256"],
+      "code_challenge_methods_supported": ["S256"],
+      "future_field": true
+    }
+  ],
+  "invalid": [
+    {
+      "issuer": "https://identity.example.com"
+    }
+  ]
+}

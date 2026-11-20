@@ -1,0 +1,27 @@
+{
+  "valid": [
+    {
+      "grant_type": "client_credentials",
+      "client_id": "svc_helpdesk",
+      "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+      "client_assertion": "header.payload.signature",
+      "scope": "identity:manifest:publish",
+      "audience": "identity"
+    },
+    {
+      "grant_type": "authorization_code",
+      "client_id": "web_helpdesk",
+      "code": "abc",
+      "code_verifier": "verifier",
+      "redirect_uri": "https://example.com/callback",
+      "scope": "openid helpdesk:ticket:read"
+    },
+    { "grant_type": "refresh_token", "refresh_token": "abc" },
+    { "grant_type": "urn:example:future", "unknown_field": "value" }
+  ],
+  "invalid": [
+    { "client_id": "svc_helpdesk" },
+    { "grant_type": "client_credentials", "scope": "Bad Scope" },
+    { "grant_type": "client_credentials", "audience": "Bad-App" }
+  ]
+}
