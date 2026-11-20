@@ -1,0 +1,9 @@
+import "./shared.tsp";
+import "./oauth.tsp";
+import "./discovery.tsp";
+import "./manifest.tsp";
+import "./role.tsp";
+import "./user.tsp";
+import "./invite.tsp";
+import "./client.tsp";
+import "./session.tsp";

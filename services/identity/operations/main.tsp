@@ -1,0 +1,12 @@
+import "./discovery.tsp";
+import "./oauth.tsp";
+import "./manifests.tsp";
+import "./roles.tsp";
+import "./users.tsp";
+import "./me.tsp";
+import "./invites.tsp";
+import "./user-roles.tsp";
+import "./clients.tsp";
+import "./client-keys.tsp";
+import "./client-roles.tsp";
+import "./sessions.tsp";
