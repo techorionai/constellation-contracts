@@ -209,9 +209,38 @@ OAuth 2.0 and OIDC clients expect standard paths and standard errors. Thus the O
 - TypeSpec cannot remove a namespace prefix. Thus a service with OAuth endpoints has no `@route` on its namespace. Each interface has its own `@route`. A `/v1` interface uses `@route("/v1/<resource>")`. An OAuth interface uses its standard path.
 - All other operations of the service follow the normal rules: `/v1` and `Problem`.
 
+### Token exchange
+
+The token endpoint accepts the grant `urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693). The request has the fields `subject_token`, `subject_token_type`, `audience`, and `scope`. It can also have `actor_token`, `actor_token_type`, and `requested_token_type`. `actor_token` and `actor_token_type` go together. The response has `issued_token_type`.
+
+| Rule | Error code |
+| ---- | ---------- |
+| Only a service client with `private_key_jwt` can use the grant. | `invalid_client` (401) |
+| The client needs the permission `identity:token:exchange`. | `unauthorized_client` |
+| A repeated parameter, a missing required parameter, or only one of `actor_token` and `actor_token_type`. | `invalid_request` |
+| A token type that is not the access token URI (or the agent ID URI for the actor). | `unsupported_token_type` |
+| The subject token is not a valid user access token. It has `act`, it is expired, or its user is disabled. The agent does not exist, is disabled, or belongs to another client. | `invalid_grant` |
+| `audience` is not one app key, or it is `identity`. | `invalid_target` |
+| A requested scope is not in the permissions of the user, intersected with the permissions of the agent if there is an actor. | `invalid_scope` |
+
+The new token has `sub` of the user. If there is an actor, it has `act` with `principal_type` `agent`. Its `exp` is not later than the `exp` of the subject token. The actor token is the ID of an agent, not a signed token. The security comes from the client authentication and the binding of the agent to its client.
+
+A custom token type URI has the form `urn:constellation:params:oauth:token-type:<name>`.
+
+### Introspection
+
+`POST /oauth/introspect` (RFC 7662) is only for a service client with `private_key_jwt`. Any other caller gets 401 `invalid_client` and learns nothing about the token. The response is `{active:false}` for an unknown, expired, or revoked token, for a token of a disabled user, and for a token with no scope for the caller app. For an active token, `scope` is the stored scope, intersected with the current permissions of the user, and then limited to the scopes that start with `<caller app>:`. If the result is empty, the response is `{active:false}`.
+
+### API tokens and self-service operations
+
+- A personal API token has the format `cpat_` followed by 43 base64url characters. A service finds an API token by this prefix. The scope of an API token is a `ScopeString`. It has no OIDC scope.
+- An operation under `/v1/me/` that changes self-service data needs a user access token with no `act`. Other tokens get 403 with the code `user_token_required`.
+- The error `scope_not_granted` lists each key in an entry of `errors`. Each entry has `field` `/scope`, `code` `scope_not_granted`, and a `message` that names the key.
+- An implicit role (`service` and `user` in the identity manifest) is in the manifest and has no database row. An API shows it with the source `config`.
+
 ## Form bodies
 
-A request body of type `application/x-www-form-urlencoded` uses `@header contentType: "application/x-www-form-urlencoded"` and `@body` with a model. The OAuth token and revoke operations are examples. Keep the form models open, so that a later release can add a field.
+A request body of type `application/x-www-form-urlencoded` uses `@header contentType: "application/x-www-form-urlencoded"` and `@body` with a model. The OAuth token, revoke, and introspect operations are examples. Keep the form models open, so that a later release can add a field.
 
 ## Manifest files
 

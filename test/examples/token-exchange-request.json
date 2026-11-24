@@ -1,0 +1,39 @@
+{
+  "valid": [
+    {
+      "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+      "client_id": "svc_ai",
+      "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+      "client_assertion": "header.payload.signature",
+      "subject_token": "header.payload.signature",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+      "actor_token": "6f1f3f0e-4c1c-4a52-9a43-3c7a0a1f9b11",
+      "actor_token_type": "urn:constellation:params:oauth:token-type:agent-id",
+      "audience": "helpdesk",
+      "scope": "helpdesk:ticket:read"
+    },
+    {
+      "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+      "client_id": "svc_ai",
+      "subject_token": "header.payload.signature",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+      "audience": "helpdesk",
+      "scope": "helpdesk:ticket:read"
+    },
+    {
+      "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+      "subject_token": "header.payload.signature",
+      "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+      "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+      "audience": "helpdesk",
+      "scope": "helpdesk:ticket:read"
+    }
+  ],
+  "invalid": [
+    {
+      "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+      "subject_token": 42,
+      "subject_token_type": "urn:ietf:params:oauth:token-type:access_token"
+    }
+  ]
+}

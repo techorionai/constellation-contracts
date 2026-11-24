@@ -1,0 +1,20 @@
+{
+  "valid": [
+    { "active": false },
+    {
+      "active": true,
+      "scope": "helpdesk:ticket:read helpdesk:ticket:write",
+      "sub": "usr_1",
+      "aud": "helpdesk",
+      "exp": 1790000000,
+      "iat": 1780000000,
+      "jti": "6f1f3f0e-4c1c-4a52-9a43-3c7a0a1f9b11",
+      "token_type": "api_token",
+      "principal_type": "user"
+    }
+  ],
+  "invalid": [
+    { "scope": "helpdesk:ticket:read" },
+    { "active": true, "exp": "1790000000" }
+  ]
+}

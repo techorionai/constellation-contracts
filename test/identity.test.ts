@@ -55,6 +55,18 @@ const rest: [string, string, string, string, string[]][] = [
   ["Sessions_list", "get", "/v1/users/{userId}/sessions", "200", ["identity:session:read"]],
   ["Sessions_revoke", "delete", "/v1/sessions/{sessionId}", "204", ["identity:session:revoke"]],
   ["Sessions_revokeAll", "delete", "/v1/users/{userId}/sessions", "204", ["identity:session:revoke"]],
+  ["MeApiTokens_create", "post", "/v1/me/api-tokens", "201", ["identity:api_token:manage_own"]],
+  ["MeApiTokens_list", "get", "/v1/me/api-tokens", "200", ["identity:api_token:manage_own"]],
+  ["MeApiTokens_revoke", "delete", "/v1/me/api-tokens/{tokenId}", "204", ["identity:api_token:manage_own"]],
+  ["UserApiTokens_list", "get", "/v1/users/{userId}/api-tokens", "200", ["identity:api_token:read"]],
+  ["ApiTokens_revoke", "delete", "/v1/api-tokens/{tokenId}", "204", ["identity:api_token:revoke"]],
+  ["Agents_create", "post", "/v1/agents", "201", ["identity:agent:write", "identity:admin"]],
+  ["Agents_list", "get", "/v1/agents", "200", ["identity:agent:read"]],
+  ["Agents_get", "get", "/v1/agents/{agentId}", "200", ["identity:agent:read"]],
+  ["Agents_update", "patch", "/v1/agents/{agentId}", "200", ["identity:agent:write", "identity:admin"]],
+  ["AgentRoles_list", "get", "/v1/agents/{agentId}/roles", "200", ["identity:role:read"]],
+  ["AgentRoles_assign", "put", "/v1/agents/{agentId}/roles/{role}", "200", ["identity:role:assign"]],
+  ["AgentRoles_remove", "delete", "/v1/agents/{agentId}/roles/{role}", "204", ["identity:role:assign"]],
 ];
 
 /** The OAuth and discovery operations. */
@@ -63,6 +75,7 @@ const oauth: [string, string, string, string][] = [
   ["Discovery_jwks", "get", "/.well-known/jwks.json", "200"],
   ["OAuth_token", "post", "/oauth/token", "200"],
   ["OAuth_revoke", "post", "/oauth/revoke", "200"],
+  ["OAuth_introspect", "post", "/oauth/introspect", "200"],
   ["OAuth_userinfo", "get", "/oauth/userinfo", "200"],
   ["OAuth_authorize", "get", "/oauth/authorize", "200"],
   ["OAuth_endSession", "get", "/oauth/end_session", "200"],
@@ -164,6 +177,7 @@ describe("identity contract", () => {
       "Discovery_jwks",
       "OAuth_token",
       "OAuth_revoke",
+      "OAuth_introspect",
       "OAuth_authorize",
       "OAuth_endSession",
     ]) {
@@ -223,7 +237,7 @@ describe("identity contract", () => {
   // U26
   it("U26: list operations have page parameters and a page result", () => {
     const lists = ops.filter((o) => o.id.endsWith("_list"));
-    expect(lists.length).toBe(7);
+    expect(lists.length).toBe(11);
     for (const o of lists) {
       const names = (o.op.parameters as Doc[]).map(
         (p) => resolveRef(doc, p).name,
@@ -359,6 +373,12 @@ describe("identity contract", () => {
         "session:read",
         "session:revoke",
         "manifest:publish",
+        "api_token:manage_own",
+        "api_token:read",
+        "api_token:revoke",
+        "agent:read",
+        "agent:write",
+        "token:exchange",
       ]
         .map((k) => `identity:${k}`)
         .sort(),
@@ -367,6 +387,13 @@ describe("identity contract", () => {
     expect([...admin.permissions].sort()).toEqual([...keys].sort());
     const service = manifest.defaultRoles.find((r: Doc) => r.key === "service");
     expect(service.permissions).toEqual(["identity:manifest:publish"]);
+    // U50
+    const user = manifest.defaultRoles.find((r: Doc) => r.key === "user");
+    expect(user.permissions).toEqual(["identity:api_token:manage_own"]);
+    const exchangers = manifest.defaultRoles
+      .filter((r: Doc) => r.permissions.includes("identity:token:exchange"))
+      .map((r: Doc) => r.key);
+    expect(exchangers).toEqual(["admin"]);
   });
 
   // U25b
@@ -400,6 +427,8 @@ describe("identity contract", () => {
       ["OAuth_userinfo", "200"],
       ["Invites_create", "201"],
       ["Users_create", "201"],
+      ["OAuth_introspect", "200"],
+      ["MeApiTokens_create", "201"],
     ];
     for (const [id, status] of cases) {
       const headers = byId[id].op.responses[status].headers;
@@ -430,6 +459,8 @@ describe("identity contract", () => {
     ]) {
       expect(discovery.properties[field], field).toBeDefined();
     }
+    expect(discovery.properties.introspection_endpoint).toBeDefined();
+    expect(discovery.required).not.toContain("introspection_endpoint");
     const userinfo = doc.components.schemas.UserInfo;
     for (const field of ["sub", "email", "email_verified", "name"]) {
       expect(userinfo.properties[field], field).toBeDefined();
@@ -450,5 +481,204 @@ describe("identity contract", () => {
     expect(client.properties.source).toBeDefined();
     expect(client.properties.app).toBeDefined();
     expect(client.required).toContain("app");
+  });
+
+  const newOps: [string, string[]][] = [
+    ["MeApiTokens_create", ["422"]],
+    ["MeApiTokens_list", []],
+    ["MeApiTokens_revoke", ["404"]],
+    ["UserApiTokens_list", ["404"]],
+    ["ApiTokens_revoke", ["404"]],
+    ["Agents_create", ["409", "422"]],
+    ["Agents_list", []],
+    ["Agents_get", ["404"]],
+    ["Agents_update", ["404", "409"]],
+    ["AgentRoles_list", ["404"]],
+    ["AgentRoles_assign", ["404", "422"]],
+    ["AgentRoles_remove", ["404"]],
+  ];
+
+  // U40
+  it("U40: error models of the new operations and the scopes of AgentRoles", () => {
+    for (const [id, statuses] of newOps) {
+      const found = Object.keys(byId[id].op.responses)
+        .filter((s) => ["404", "409", "422"].includes(s))
+        .sort();
+      expect(found, id).toEqual(statuses);
+      for (const s of ["400", "401", "403", "500"]) {
+        expect(byId[id].op.responses[s], `${id} ${s}`).toBeDefined();
+      }
+    }
+    const assign = byId["AgentRoles_assign"].op;
+    expect(
+      assign.responses["200"].content["application/json"].schema,
+    ).toEqual({ $ref: "#/components/schemas/RoleAssignment" });
+    for (const name of ["list", "assign", "remove"]) {
+      expect(byId[`AgentRoles_${name}`].op["x-required-scopes"]).toEqual(
+        byId[`ClientRoles_${name}`].op["x-required-scopes"],
+      );
+    }
+    for (const id of ["AgentRoles_assign", "AgentRoles_remove"]) {
+      const role = (byId[id].op.parameters as Doc[])
+        .map((p) => resolveRef(doc, p))
+        .find((p) => p.name === "role");
+      expect(role.in, id).toBe("path");
+      expect(role.schema, id).toEqual({ $ref: "#/components/schemas/RoleRef" });
+    }
+  });
+
+  // U41
+  it("U41: OAuth_introspect has a form body, OAuthError, and no security", () => {
+    const found = byId["OAuth_introspect"];
+    expect(Object.keys(found.op.requestBody.content)).toEqual([
+      "application/x-www-form-urlencoded",
+    ]);
+    for (const [status, response] of Object.entries<Doc>(found.op.responses)) {
+      if (status === "200") continue;
+      expect(Object.keys(response.content), status).toEqual(["application/json"]);
+      expect(response.content["application/json"].schema).toEqual({
+        $ref: "#/components/schemas/OAuthError",
+      });
+    }
+    expect(effectiveSecurity(doc, found.op)).toEqual([{}]);
+  });
+
+  // U42
+  it("U42: IntrospectRequest and IntrospectResponse", () => {
+    const request = doc.components.schemas.IntrospectRequest;
+    expect(request.required).toEqual(["token"]);
+    expect(request.properties.token.maxLength).toBe(512);
+    expect(doc.components.schemas.IntrospectResponse.required).toEqual(["active"]);
+    const headers = byId["OAuth_introspect"].op.responses["200"].headers;
+    expect(headers["Cache-Control"].schema.enum).toEqual(["no-store"]);
+    expect(headers["Pragma"].schema.enum).toEqual(["no-cache"]);
+  });
+
+  // U43
+  it("U43: token exchange examples and the rules in the doc comment", async () => {
+    const validate = check("TokenRequest");
+    const { valid, invalid } = await examples("token-exchange-request.json");
+    for (const value of valid) expect(validate(value)).toBe(true);
+    invalid.forEach((value, i) =>
+      expect(validate(value), `invalid example ${i}`).toBe(false),
+    );
+    const text: string = byId["OAuth_token"].op.description;
+    for (const code of [
+      "invalid_client",
+      "unauthorized_client",
+      "invalid_request",
+      "unsupported_token_type",
+      "invalid_grant",
+      "invalid_target",
+      "invalid_scope",
+    ]) {
+      expect(text, code).toContain(code);
+    }
+  });
+
+  // U44
+  it("U44: TokenResponse with issued_token_type", () => {
+    const validate = check("TokenResponse");
+    expect(
+      validate({
+        access_token: "a.b.c",
+        token_type: "Bearer",
+        expires_in: 300,
+        scope: "helpdesk:ticket:read",
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      }),
+    ).toBe(true);
+  });
+
+  // U45
+  it("U45: IntrospectResponse examples", async () => {
+    const validate = check("IntrospectResponse");
+    const { valid, invalid } = await examples("introspect-response.json");
+    for (const value of valid) expect(validate(value)).toBe(true);
+    invalid.forEach((value, i) =>
+      expect(validate(value), `invalid example ${i}`).toBe(false),
+    );
+    const props = doc.components.schemas.IntrospectResponse.properties;
+    expect(props.exp.format).toBe("int64");
+    expect(props.iat.format).toBe("int64");
+    expect(JSON.stringify(props.aud)).toContain("AppKey");
+    const text: string = byId["OAuth_introspect"].op.description;
+    expect(text).toContain("invalid_client");
+    expect(text).toContain("<caller app>:");
+  });
+
+  // U46
+  it("U46: ApiTokenCreate examples", async () => {
+    const validate = check("ApiTokenCreate");
+    const { valid, invalid } = await examples("api-token-create.json");
+    for (const value of valid) expect(validate(value)).toBe(true);
+    invalid.forEach((value, i) =>
+      expect(validate(value), `invalid example ${i}`).toBe(false),
+    );
+    expect(doc.components.schemas.ApiTokenCreate.additionalProperties).not.toBe(false);
+    expect(JSON.stringify(doc.components.schemas.ApiTokenCreate.properties.scope)).toContain(
+      "ScopeString",
+    );
+  });
+
+  // U47
+  it("U47: ApiTokenCreated is a secret and the response is not cached", () => {
+    expect(doc.components.schemas.ApiTokenCreated.properties.token.format).toBe(
+      "password",
+    );
+    const headers = byId["MeApiTokens_create"].op.responses["201"].headers;
+    expect(headers["Cache-Control"].schema.enum).toEqual(["no-store"]);
+    expect(headers["Pragma"].schema.enum).toEqual(["no-cache"]);
+  });
+
+  // U51
+  it("U51: Agent models", async () => {
+    const { valid, invalid } = await examples("agent.json");
+    for (const group of valid as Doc[]) {
+      expect(check(group.schema)(group.value), group.schema).toBe(true);
+    }
+    for (const group of invalid as Doc[]) {
+      expect(check(group.schema)(group.value), JSON.stringify(group)).toBe(false);
+    }
+    for (const name of ["Agent", "AgentCreate", "AgentUpdate"]) {
+      expect(doc.components.schemas[name].additionalProperties, name).not.toBe(false);
+    }
+  });
+
+  // U53
+  it("U53: grant type and token type unions", () => {
+    expect(check("TokenRequest")({ grant_type: "urn:ietf:params:oauth:grant-type:token-exchange" })).toBe(true);
+    const tokenType = check("TokenType");
+    for (const value of [
+      "urn:ietf:params:oauth:token-type:access_token",
+      "urn:constellation:params:oauth:token-type:agent-id",
+      "urn:example:other",
+    ]) {
+      expect(tokenType(value), value).toBe(true);
+    }
+    const hint = check("IntrospectTokenTypeHint");
+    for (const value of ["api_token", "access_token", "refresh_token", "other"]) {
+      expect(hint(value), value).toBe(true);
+    }
+    const revokeHint = doc.components.schemas.RevokeRequest.properties.token_type_hint;
+    expect(JSON.stringify(revokeHint)).toContain("TokenTypeHint");
+    expect(JSON.stringify(doc.components.schemas.TokenTypeHint)).not.toContain("api_token");
+  });
+
+  // U57
+  it("U57: the act claim is set by token exchange", async () => {
+    const common = await loadCommon();
+    const text: string = common.components.schemas.AccessTokenClaims.properties.act.description ?? JSON.stringify(common.components.schemas.AccessTokenClaims.properties.act);
+    expect(text).toContain("token exchange");
+    expect(text).toContain("agent");
+    expect(text).not.toContain("Reserved");
+  });
+
+  // U56
+  it("U56: implicit role text and AssignmentSource", () => {
+    expect(byId["UserRoles_list"].op.description).toContain("identity:user");
+    expect(byId["UserRoles_list"].op.description).toContain("config");
+    const source = doc.components.schemas.AssignmentSource;
+    expect(source.enum ?? source.anyOf?.flatMap((s: Doc) => s.enum)).toEqual(["config", "api"]);
   });
 });

@@ -1,0 +1,29 @@
+{
+  "valid": [
+    {
+      "schema": "Agent",
+      "value": {
+        "id": "6f1f3f0e-4c1c-4a52-9a43-3c7a0a1f9b11",
+        "name": "helper",
+        "clientId": "svc_ai",
+        "enabled": true,
+        "createdAt": "2026-11-01T10:00:00Z",
+        "updatedAt": "2026-11-01T10:00:00Z"
+      }
+    },
+    { "schema": "AgentCreate", "value": { "name": "helper", "clientId": "svc_ai", "extra": 1 } },
+    { "schema": "AgentUpdate", "value": { "enabled": false } }
+  ],
+  "invalid": [
+    { "schema": "AgentCreate", "value": { "name": "", "clientId": "svc_ai" } },
+    { "schema": "AgentCreate", "value": { "name": "helper" } },
+    {
+      "schema": "AgentCreate",
+      "value": { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "clientId": "svc_ai" }
+    },
+    {
+      "schema": "AgentUpdate",
+      "value": { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+    }
+  ]
+}

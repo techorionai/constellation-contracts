@@ -1,0 +1,15 @@
+{
+  "valid": [
+    { "name": "ci", "scope": "helpdesk:ticket:read", "expiresInDays": 30 },
+    { "name": "ci", "scope": "helpdesk:ticket:read" },
+    { "name": "ci", "scope": "helpdesk:ticket:read", "unknown_field": true }
+  ],
+  "invalid": [
+    { "name": "ci", "scope": "helpdesk:ticket:read", "expiresInDays": 0 },
+    { "name": "ci", "scope": "helpdesk:ticket:read", "expiresInDays": 366 },
+    { "name": "", "scope": "helpdesk:ticket:read" },
+    { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "scope": "helpdesk:ticket:read" },
+    { "name": "ci", "scope": "openid helpdesk:ticket:read" },
+    { "name": "ci", "scope": "" }
+  ]
+}
