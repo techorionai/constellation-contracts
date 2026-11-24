@@ -10,3 +10,7 @@ import "./clients.tsp";
 import "./client-keys.tsp";
 import "./client-roles.tsp";
 import "./sessions.tsp";
+import "./me-api-tokens.tsp";
+import "./api-tokens.tsp";
+import "./agents.tsp";
+import "./agent-roles.tsp";
