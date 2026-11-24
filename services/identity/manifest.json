@@ -55,7 +55,7 @@
     },
     {
       "key": "identity:agent:read",
-      "description": "Read agents and their role assignments."
+      "description": "Read agents."
     },
     {
       "key": "identity:agent:write",

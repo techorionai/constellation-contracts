@@ -52,12 +52,14 @@ model TokenRequest {
 
   /** Access token of the user. For the grant `urn:ietf:params:oauth:grant-type:token-exchange`. */
   @secret
+  @maxLength(4096)
   subject_token?: string;
 
   /** Type of the subject token. It is the access token URI. For token exchange. */
   subject_token_type?: TokenType;
 
   /** ID of an agent, not a signed token. For token exchange. It goes together with `actor_token_type`. */
+  @format("uuid")
   actor_token?: string;
 
   /** Type of the actor token. It is `urn:constellation:params:oauth:token-type:agent-id`. For token exchange. */

@@ -219,11 +219,11 @@ The token endpoint accepts the grant `urn:ietf:params:oauth:grant-type:token-exc
 | The client needs the permission `identity:token:exchange`. | `unauthorized_client` |
 | A repeated parameter, a missing required parameter, or only one of `actor_token` and `actor_token_type`. | `invalid_request` |
 | A token type that is not the access token URI (or the agent ID URI for the actor). | `unsupported_token_type` |
-| The subject token is not a valid user access token. It has `act`, it is expired, or its user is disabled. The agent does not exist, is disabled, or belongs to another client. | `invalid_grant` |
+| The subject token is not a valid user access token. It has `act`, it is expired, or its user is disabled. Its `aud` is not the `app` of the authenticated client. The agent does not exist, is disabled, or belongs to another client. | `invalid_grant` |
 | `audience` is not one app key, or it is `identity`. | `invalid_target` |
-| A requested scope is not in the permissions of the user, intersected with the permissions of the agent if there is an actor. | `invalid_scope` |
+| A requested scope is not in the permissions of the user, intersected with the permissions of the agent if there is an actor. An OIDC scope (`openid`, `profile`, `email`, `offline_access`). A scope that does not start with `<audience>:`. | `invalid_scope` |
 
-The new token has `sub` of the user. If there is an actor, it has `act` with `principal_type` `agent`. Its `exp` is not later than the `exp` of the subject token. The actor token is the ID of an agent, not a signed token. The security comes from the client authentication and the binding of the agent to its client.
+The new token has `sub` of the user. If there is an actor, it has `act` with `principal_type` `agent`. Its `exp` is not later than the `exp` of the subject token. The response has no `refresh_token` and no `id_token`. The actor token is the ID of an agent, not a signed token. The security comes from the client authentication and the binding of the agent to its client.
 
 A custom token type URI has the form `urn:constellation:params:oauth:token-type:<name>`.
 

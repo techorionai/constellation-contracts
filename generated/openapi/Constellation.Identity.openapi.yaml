@@ -329,11 +329,15 @@ paths:
         `invalid_grant`: the subject token is not a JWT user access token (`typ` `at+jwt`) of the identity issuer,
         or it is expired, or its `principal_type` is not `user`, or it has `act`, or its user does not exist or is disabled.
         A service token, a token with `act`, an exchanged token, and an API token (`cpat_`) are not valid subject tokens.
+        `invalid_grant` is also the code if the `aud` of the subject token is not the `app` of the authenticated client.
         `invalid_grant` is also the code if the agent does not exist, is disabled, or does not belong to the authenticated client.
         The error text is the same for all three cases.
         `invalid_target`: `audience` is not one app key, or it is `identity`.
         `invalid_scope`: the granted scope is the permissions of the user. If there is an actor,
         it is also intersected with the permissions of the agent. A requested scope that is not in the granted set fails.
+        `invalid_scope` is also the code for an OIDC scope (`openid`, `profile`, `email`, `offline_access`),
+        and for a scope that does not start with `<audience>:`.
+        The response has no `refresh_token` and no `id_token`.
         The `exp` of the new token is not later than the `exp` of the subject token.
         The new token has `sub` of the user. If there is an actor, it has `act` with `principal_type` `agent`.
         The response has `issued_token_type`.
@@ -3603,6 +3607,7 @@ components:
           description: Refresh token. For the grant `refresh_token`.
         subject_token:
           type: string
+          maxLength: 4096
           format: password
           description: Access token of the user. For the grant `urn:ietf:params:oauth:grant-type:token-exchange`.
         subject_token_type:
@@ -3611,6 +3616,7 @@ components:
           description: Type of the subject token. It is the access token URI. For token exchange.
         actor_token:
           type: string
+          format: uuid
           description: ID of an agent, not a signed token. For token exchange. It goes together with `actor_token_type`.
         actor_token_type:
           allOf:

@@ -238,6 +238,9 @@ describe("identity contract", () => {
   it("U26: list operations have page parameters and a page result", () => {
     const lists = ops.filter((o) => o.id.endsWith("_list"));
     expect(lists.length).toBe(11);
+    for (const id of ["MeApiTokens_list", "UserApiTokens_list", "Agents_list", "AgentRoles_list"]) {
+      expect(lists.map((o) => o.id), id).toContain(id);
+    }
     for (const o of lists) {
       const names = (o.op.parameters as Doc[]).map(
         (p) => resolveRef(doc, p).name,
@@ -509,6 +512,20 @@ describe("identity contract", () => {
         expect(byId[id].op.responses[s], `${id} ${s}`).toBeDefined();
       }
     }
+    const tokenText: string = byId["OAuth_token"].op.description;
+    for (const code of [
+      "invalid_client",
+      "unauthorized_client",
+      "invalid_request",
+      "unsupported_token_type",
+      "invalid_grant",
+      "invalid_target",
+      "invalid_scope",
+    ]) {
+      expect(tokenText, code).toContain(code);
+    }
+    expect(tokenText).toContain("`aud` of the subject token");
+    expect(tokenText).toContain("no `refresh_token`");
     const assign = byId["AgentRoles_assign"].op;
     expect(
       assign.responses["200"].content["application/json"].schema,
@@ -668,10 +685,20 @@ describe("identity contract", () => {
   // U57
   it("U57: the act claim is set by token exchange", async () => {
     const common = await loadCommon();
-    const text: string = common.components.schemas.AccessTokenClaims.properties.act.description ?? JSON.stringify(common.components.schemas.AccessTokenClaims.properties.act);
+    const text: string = common.components.schemas.AccessTokenClaims.properties.act.description;
     expect(text).toContain("token exchange");
     expect(text).toContain("agent");
     expect(text).not.toContain("Reserved");
+    expect(common.components.schemas.ActorClaim.description).toContain("one level");
+  });
+
+  // R4
+  it("R4: subject_token has a length limit and actor_token is a uuid", () => {
+    const validate = check("TokenRequest");
+    const base = { grant_type: "urn:ietf:params:oauth:grant-type:token-exchange" };
+    expect(validate({ ...base, subject_token: "a".repeat(4097) })).toBe(false);
+    expect(validate({ ...base, subject_token: "a".repeat(4096) })).toBe(true);
+    expect(validate({ ...base, actor_token: "x".repeat(1000) })).toBe(false);
   });
 
   // U56
