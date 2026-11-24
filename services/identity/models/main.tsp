@@ -7,3 +7,7 @@ import "./user.tsp";
 import "./invite.tsp";
 import "./client.tsp";
 import "./session.tsp";
+import "./token-exchange.tsp";
+import "./introspection.tsp";
+import "./api-token.tsp";
+import "./agent.tsp";

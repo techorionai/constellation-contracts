@@ -7,7 +7,11 @@ namespace Constellation.Identity;
 /** Operations on the roles of a user. */
 @route("/v1/users/{userId}/roles")
 interface UserRoles {
-  /** List the roles of a user. */
+  /**
+   * List the roles of a user.
+   * Every active user also has the implicit role `identity:user`. It has no database row.
+   * The list shows it with the source `config`.
+   */
   @extension("x-required-scopes", #["identity:role:read"])
   @list
   @get

@@ -7,6 +7,7 @@
       "jwks_uri": "https://identity.example.com/.well-known/jwks.json",
       "userinfo_endpoint": "https://identity.example.com/oauth/userinfo",
       "revocation_endpoint": "https://identity.example.com/oauth/revoke",
+      "introspection_endpoint": "https://identity.example.com/oauth/introspect",
       "end_session_endpoint": "https://identity.example.com/oauth/end_session",
       "response_types_supported": ["code"],
       "grant_types_supported": [

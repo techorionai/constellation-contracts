@@ -60,7 +60,9 @@ components:
         act:
           allOf:
             - $ref: '#/components/schemas/ActorClaim'
-          description: The agent that acts for the subject. Reserved for token exchange.
+          description: |-
+            The agent that acts for the subject. The identity service sets it for a token exchange with an actor.
+            `act.principal_type` is `agent`. `act.sub` is the ID of the agent.
       description: |-
         Claims of an access token (RFC 9068).
         The JWT header `typ` is `at+jwt`. The header `alg` is `ES256`.
@@ -79,7 +81,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/PrincipalType'
           description: Type of the acting principal.
-      description: The agent that acts for the subject of a token.
+      description: The agent that acts for the subject of a token. It has one level. It has no nested `act`.
     AppKey:
       type: string
       maxLength: 32

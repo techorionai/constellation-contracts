@@ -27,8 +27,11 @@ model DiscoveryDocument {
   /** Supported response types. */
   response_types_supported: string[];
 
-  /** Supported grant types. */
+  /** Supported grant types. They include `urn:ietf:params:oauth:grant-type:token-exchange`. */
   grant_types_supported: string[];
+
+  /** URL of the introspection endpoint. */
+  introspection_endpoint?: url;
 
   /** Supported subject types. */
   subject_types_supported: string[];

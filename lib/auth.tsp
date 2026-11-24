@@ -29,7 +29,7 @@ scalar RoleRef extends string;
 @friendlyName("AppKeyList")
 model AppKeyList is AppKey[];
 
-/** The agent that acts for the subject of a token. */
+/** The agent that acts for the subject of a token. It has one level. It has no nested `act`. */
 @friendlyName("ActorClaim")
 model ActorClaim {
   /** ID of the acting principal. */
@@ -77,6 +77,9 @@ model AccessTokenClaims {
   /** Type of the principal in `sub`. */
   principal_type: PrincipalType;
 
-  /** The agent that acts for the subject. Reserved for token exchange. */
+  /**
+   * The agent that acts for the subject. The identity service sets it for a token exchange with an actor.
+   * `act.principal_type` is `agent`. `act.sub` is the ID of the agent.
+   */
   act?: ActorClaim;
 }

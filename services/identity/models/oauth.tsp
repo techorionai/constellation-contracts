@@ -9,6 +9,7 @@ union GrantType {
   "client_credentials",
   "authorization_code",
   "refresh_token",
+  "urn:ietf:params:oauth:grant-type:token-exchange",
   string,
 }
 
@@ -48,6 +49,24 @@ model TokenRequest {
   /** Refresh token. For the grant `refresh_token`. */
   @secret
   refresh_token?: string;
+
+  /** Access token of the user. For the grant `urn:ietf:params:oauth:grant-type:token-exchange`. */
+  @secret
+  @maxLength(4096)
+  subject_token?: string;
+
+  /** Type of the subject token. It is the access token URI. For token exchange. */
+  subject_token_type?: TokenType;
+
+  /** ID of an agent, not a signed token. For token exchange. It goes together with `actor_token_type`. */
+  @format("uuid")
+  actor_token?: string;
+
+  /** Type of the actor token. It is `urn:constellation:params:oauth:token-type:agent-id`. For token exchange. */
+  actor_token_type?: TokenType;
+
+  /** Type of the token that the client asks for. It is the access token URI. For token exchange. */
+  requested_token_type?: TokenType;
 }
 
 /** Result of a successful token request. */
@@ -75,6 +94,9 @@ model TokenResponse {
   /** ID token. Present if the request had the scope `openid`. */
   @secret
   id_token?: string;
+
+  /** Type of the issued token. The identity service sets it for token exchange. */
+  issued_token_type?: TokenType;
 }
 
 /** Type hint of a token in a revoke request. The union is open. */
