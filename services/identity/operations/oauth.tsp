@@ -51,7 +51,7 @@ interface OAuth {
   token(
     @header contentType: "application/x-www-form-urlencoded",
     @body body: TokenRequest,
-  ): TokenResponse | OAuthError;
+  ): TokenResponse | OAuthError | OAuthTooManyRequests;
 
   /**
    * Revoke a token (RFC 7009).
@@ -67,7 +67,8 @@ interface OAuth {
     | {
         @statusCode _: 200;
       }
-    | OAuthError;
+    | OAuthError
+    | OAuthTooManyRequests;
 
   /**
    * Introspect a token (RFC 7662). Only a service client with `private_key_jwt` can call it.
@@ -89,7 +90,7 @@ interface OAuth {
   introspect(
     @header contentType: "application/x-www-form-urlencoded",
     @body body: IntrospectRequest,
-  ): IntrospectResponse | OAuthError;
+  ): IntrospectResponse | OAuthError | OAuthTooManyRequests;
 
   /**
    * Get the claims of the user of an access token.
@@ -100,7 +101,12 @@ interface OAuth {
    */
   @route("/userinfo")
   @get
-  userinfo(): UserInfo | InvalidToken | InsufficientScope;
+  userinfo():
+    | UserInfo
+    | InvalidToken
+    | InsufficientScope
+    | OAuthTooManyRequests
+    | OAuthServiceUnavailable;
 
   /**
    * Start the authorization code flow with PKCE.
@@ -122,7 +128,7 @@ interface OAuth {
     @query code_challenge_method: "S256",
     @query prompt?: string,
     @query max_age?: int32,
-  ): HtmlPage | Redirect;
+  ): HtmlPage | Redirect | HtmlTooManyRequests | HtmlServiceUnavailable;
 
   /**
    * End the session of a user (OIDC RP-initiated logout).
@@ -135,5 +141,5 @@ interface OAuth {
     @query id_token_hint?: string,
     @query post_logout_redirect_uri?: string,
     @query state?: string,
-  ): HtmlPage | Redirect;
+  ): HtmlPage | Redirect | HtmlTooManyRequests | HtmlServiceUnavailable;
 }

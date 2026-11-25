@@ -1,0 +1,24 @@
+{
+  "valid": [
+    {
+      "error": "temporarily_unavailable",
+      "error_description": "Too many requests. Try again later."
+    },
+    { "error": "temporarily_unavailable" }
+  ],
+  "invalid": [
+    { "error_description": "Too many requests." },
+    { "error": 429 }
+  ],
+  "validProblem": [
+    {
+      "type": "about:blank",
+      "title": "Too many requests",
+      "status": 429,
+      "code": "rate_limited"
+    }
+  ],
+  "invalidProblem": [
+    { "title": "Too many requests", "status": 429 }
+  ]
+}
