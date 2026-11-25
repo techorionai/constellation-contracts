@@ -149,7 +149,7 @@ union OAuthErrorCode {
  * The status is 400, except for these codes. `invalid_client` is 401.
  * `server_error` is 500. `temporarily_unavailable` is 503 when the service cannot do the request now.
  * `temporarily_unavailable` is 429 for a rate limit (model `OAuthTooManyRequests`).
- * In both cases the client can try again after `Retry-After`.
+ * The client can try again after `Retry-After` of a 429 response. A 503 response of this model has no `Retry-After`.
  */
 @error
 @friendlyName("OAuthError")

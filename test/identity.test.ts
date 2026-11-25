@@ -730,6 +730,16 @@ describe("identity contract", () => {
   it("U58: exactly ten operations declare 429", () => {
     const with429 = ops.filter((o) => o.op.responses["429"]).map((o) => o.id);
     expect(with429.sort()).toEqual(limited.slice().sort());
+    // Each public operation (no security) declares 429 with a required Retry-After.
+    const publicOps = ops.filter((o) => {
+      const security = effectiveSecurity(doc, o.op);
+      return security.every((requirement) => Object.keys(requirement).length === 0);
+    });
+    expect(publicOps.length).toBeGreaterThan(0);
+    for (const o of publicOps) {
+      expect(o.op.responses["429"], o.id).toBeDefined();
+      expect(o.op.responses["429"].headers?.["Retry-After"]?.required, o.id).toBe(true);
+    }
   });
 
   // U59
@@ -775,6 +785,11 @@ describe("identity contract", () => {
       expect(Object.keys(response.content), id).toEqual(["text/html"]);
       // The HTML body is a string, as in HtmlPage. The emitter inlines it.
       expect(response.content["text/html"].schema, id).toEqual({ type: "string" });
+      // The 429 and the 503 responses are different.
+      const other = byId[id].op.responses["503"];
+      expect(response.description, id).not.toEqual(other.description);
+      expect(response.headers["Retry-After"].required, id).toBe(true);
+      expect(other.headers["Retry-After"].required ?? false, id).toBe(false);
     }
   });
 
@@ -791,6 +806,9 @@ describe("identity contract", () => {
       expect(resolved.allOf, id).toEqual([{ $ref: "#/components/schemas/Problem" }]);
       expect(resolveRef(doc, resolved.allOf[0]).required, id).toContain("code");
     }
+    for (const id of ["Discovery_jwks", "Discovery_openidConfiguration"]) {
+      expect(byId[id].op.description, id).toContain("`rate_limited`");
+    }
   });
 
   // U64
@@ -802,8 +820,8 @@ describe("identity contract", () => {
       expect(schema, id).toEqual({ $ref: "#/components/schemas/ServiceUnavailable" });
       const resolved = resolveRef(doc, schema);
       expect(resolveRef(doc, resolved.allOf[0]).required, id).toContain("code");
-      expect(byId[id].op.description, id).toContain("rate_limited");
-      expect(byId[id].op.description, id).toContain("unavailable");
+      expect(byId[id].op.description, id).toContain("`TooManyRequests`: `rate_limited`");
+      expect(byId[id].op.description, id).toContain("`ServiceUnavailable`: `unavailable`");
     }
   });
 
@@ -833,6 +851,8 @@ describe("identity contract", () => {
       expect(header.required ?? false, id).toBe(false);
       expect(header.schema.format, id).toBe("int32");
       expect(header.schema.minimum, id).toBe(1);
+      // The 429 and the 503 responses are different.
+      expect(response.description, id).not.toEqual(byId[id].op.responses["429"].description);
     }
   });
 
@@ -843,6 +863,10 @@ describe("identity contract", () => {
       expect(response.content["application/json"].schema, id).toEqual({
         $ref: "#/components/schemas/OAuthError",
       });
+      expect(response.headers?.["Retry-After"], id).toBeUndefined();
+    }
+    for (const id of ["MeApiTokens_create", "PermissionManifests_publish"]) {
+      const response = byId[id].op.responses["503"];
       expect(response.headers?.["Retry-After"], id).toBeUndefined();
     }
     expect(doc.components.schemas.ServiceUnavailable.allOf).toEqual([

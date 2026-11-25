@@ -203,7 +203,7 @@ interface Notes {
 OAuth 2.0 and OIDC clients expect standard paths and standard errors. Thus the OAuth endpoints are an exception to the rules for paths and errors.
 
 - An OAuth or discovery endpoint has the standard path with no `/v1` prefix. Examples: `/oauth/token` and `/.well-known/jwks.json`.
-- Its error body is the RFC 6749 form `{error, error_description}` with the content type `application/json`. It is not a `Problem`.
+- The error body of an OAuth endpoint is the RFC 6749 form `{error, error_description}` with the content type `application/json`. It is not a `Problem`. A discovery endpoint is an exception for 429 (see below).
 - A protected resource endpoint of OAuth, for example `userinfo`, gives a `WWW-Authenticate` header on 401 and 403 (RFC 6750) and no body. It uses the OAuth error body on 429 and 503.
 - A discovery endpoint uses the `Problem` body with the code `rate_limited` for 429.
 - The field names of an OAuth model are in snake case, as the RFCs require.
@@ -316,6 +316,7 @@ Rules for the content of an error:
 - `Retry-After` is an integer number of seconds (RFC 9110 delay-seconds). The identity service sends a value of 1 or more. A client accepts 0 and treats it as 1.
 - A client must not try again before `Retry-After`.
 - A new public operation must declare 429.
+- The 429 or 503 status, the body (`detail`, `error_description`), and `Retry-After` do not change when a `client_id` or a user exists or does not exist. The response does not give the limit key, the limit value, or the remaining requests.
 
 ## Pagination
 

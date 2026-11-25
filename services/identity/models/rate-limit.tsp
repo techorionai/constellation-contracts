@@ -6,6 +6,8 @@ namespace Constellation.Identity;
  * An OAuth operation limits the rate of requests (RFC 6749 section 5.2).
  * The `error` is `temporarily_unavailable`. The client tries again after `Retry-After`.
  * The body has the same fields as `OAuthError`.
+ * The status, the body, and `Retry-After` do not change when a `client_id` or a user exists or does not exist.
+ * The response does not give the limit key, the limit value, or the remaining requests.
  */
 @error
 @friendlyName("OAuthTooManyRequests")
@@ -65,7 +67,12 @@ model OAuthServiceUnavailable {
   error_description?: string;
 }
 
-/** A page that tells a person in a browser to try again later. The service limits the rate of requests. */
+/**
+ * A page that tells a person in a browser to try again later. The service limits the rate of requests.
+ * The status, the body, and `Retry-After` do not change when a `client_id` or a user exists or does not exist.
+ * The response does not give the limit key, the limit value, or the remaining requests.
+ * The emitter writes the body as an inline string schema. The generated file has no named schema for this model.
+ */
 @error
 @friendlyName("HtmlTooManyRequests")
 model HtmlTooManyRequests {
@@ -84,7 +91,10 @@ model HtmlTooManyRequests {
   @body body: string;
 }
 
-/** A page that tells a person in a browser to try again later. The service cannot do the request now. */
+/**
+ * A page that tells a person in a browser to try again later. The service cannot do the request now.
+ * The emitter writes the body as an inline string schema. The generated file has no named schema for this model.
+ */
 @error
 @friendlyName("HtmlServiceUnavailable")
 model HtmlServiceUnavailable {
