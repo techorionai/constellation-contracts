@@ -204,7 +204,8 @@ OAuth 2.0 and OIDC clients expect standard paths and standard errors. Thus the O
 
 - An OAuth or discovery endpoint has the standard path with no `/v1` prefix. Examples: `/oauth/token` and `/.well-known/jwks.json`.
 - Its error body is the RFC 6749 form `{error, error_description}` with the content type `application/json`. It is not a `Problem`.
-- A protected resource endpoint of OAuth, for example `userinfo`, gives a `WWW-Authenticate` header on 401 and 403 (RFC 6750) and no body.
+- A protected resource endpoint of OAuth, for example `userinfo`, gives a `WWW-Authenticate` header on 401 and 403 (RFC 6750) and no body. It uses the OAuth error body on 429 and 503.
+- A discovery endpoint uses the `Problem` body with the code `rate_limited` for 429.
 - The field names of an OAuth model are in snake case, as the RFCs require.
 - TypeSpec cannot remove a namespace prefix. Thus a service with OAuth endpoints has no `@route` on its namespace. Each interface has its own `@route`. A `/v1` interface uses `@route("/v1/<resource>")`. An OAuth interface uses its standard path.
 - All other operations of the service follow the normal rules: `/v1` and `Problem`.
@@ -307,6 +308,14 @@ Rules for the content of an error:
 - `title` and `detail` contain no internal data. Examples of internal data: stack traces, SQL text, file paths, host names, and tokens.
 - `instance` contains no personal data and no secret.
 - A 500 or 503 response gives only a general `detail`, plus `requestId` and `traceId`. An operator uses these IDs to find the full error in the logs and traces.
+
+## Rate limits
+
+- An operation that the service limits declares 429 with the required header `Retry-After`.
+- The body follows the family of the operation. An `/oauth/*` JSON operation uses the OAuth error body. A browser page uses `HtmlPage` content. A `/v1` or discovery operation uses `Problem` with the code `rate_limited`.
+- `Retry-After` is an integer number of seconds (RFC 9110 delay-seconds). The identity service sends a value of 1 or more. A client accepts 0 and treats it as 1.
+- A client must not try again before `Retry-After`.
+- A new public operation must declare 429.
 
 ## Pagination
 
