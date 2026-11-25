@@ -18,6 +18,7 @@ interface MeApiTokens {
    * It has one entry in `errors` for each key, with `field` `/scope` and `code` `scope_not_granted`.
    * `token_limit` means that the user has the maximum number of active tokens,
    * or the maximum number of token records that the service keeps. The service sets both limits.
+   * Error code of `TooManyRequests`: `rate_limited`. Error code of `ServiceUnavailable`: `unavailable`.
    */
   @extension("x-required-scopes", #["identity:api_token:manage_own"])
   @post
@@ -28,6 +29,8 @@ interface MeApiTokens {
         @body body: ApiTokenCreated;
       }
     | UnprocessableContent
+    | TooManyRequests
+    | ServiceUnavailable
     | CommonErrors;
 
   /** List the API tokens of the user. Error code of `Forbidden`: `user_token_required`. */

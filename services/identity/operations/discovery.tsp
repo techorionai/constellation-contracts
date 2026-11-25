@@ -1,4 +1,5 @@
 using Http;
+using Constellation.Common;
 
 namespace Constellation.Identity;
 
@@ -9,11 +10,11 @@ interface Discovery {
   @useAuth(NoAuth)
   @route("/openid-configuration")
   @get
-  openidConfiguration(): DiscoveryDocument;
+  openidConfiguration(): DiscoveryDocument | TooManyRequests;
 
   /** Get the public keys that verify the tokens of the service. */
   @useAuth(NoAuth)
   @route("/jwks.json")
   @get
-  jwks(): JsonWebKeySet;
+  jwks(): JsonWebKeySet | TooManyRequests;
 }

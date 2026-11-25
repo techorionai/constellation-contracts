@@ -12,6 +12,7 @@ interface PermissionManifests {
    * The caller must be a service client of that app. The app `identity` is not allowed.
    * Error codes of `UnprocessableContent`: `manifest_app_mismatch`, `permission_app_mismatch`,
    * `role_permission_unknown`, and `duplicate_key`.
+   * Error code of `TooManyRequests`: `rate_limited`. Error code of `ServiceUnavailable`: `unavailable`.
    */
   @extension("x-required-scopes", #["identity:manifest:publish"])
   @route("/{app}")
@@ -19,6 +20,8 @@ interface PermissionManifests {
   publish(@path app: AppKey, @body manifest: PermissionManifest):
     | PublishedManifest
     | UnprocessableContent
+    | TooManyRequests
+    | ServiceUnavailable
     | CommonErrors;
 
   /** List the stored manifests. */

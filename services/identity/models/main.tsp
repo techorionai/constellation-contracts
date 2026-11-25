@@ -1,5 +1,6 @@
 import "./shared.tsp";
 import "./oauth.tsp";
+import "./rate-limit.tsp";
 import "./discovery.tsp";
 import "./manifest.tsp";
 import "./role.tsp";
