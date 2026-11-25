@@ -103,6 +103,17 @@ function effectiveSecurity(doc: Doc, op: Doc): Doc[] {
   return op.security ?? doc.security ?? [];
 }
 
+/** The operations that declare 429, by body family. */
+const oauthLimited = ["OAuth_token", "OAuth_introspect", "OAuth_revoke", "OAuth_userinfo"];
+const htmlLimited = ["OAuth_authorize", "OAuth_endSession"];
+const jsonLimited = [
+  "Discovery_jwks",
+  "Discovery_openidConfiguration",
+  "MeApiTokens_create",
+  "PermissionManifests_publish",
+];
+const limited = [...oauthLimited, ...htmlLimited, ...jsonLimited];
+
 describe("identity contract", () => {
   let doc: Doc;
   let ops: Operation[];
@@ -156,7 +167,10 @@ describe("identity contract", () => {
           "application/json",
         ]);
         expect(response.content["application/json"].schema).toEqual({
-          $ref: "#/components/schemas/OAuthError",
+          $ref:
+            status === "429"
+              ? "#/components/schemas/OAuthTooManyRequests"
+              : "#/components/schemas/OAuthError",
         });
       }
     }
@@ -554,7 +568,10 @@ describe("identity contract", () => {
       if (status === "200") continue;
       expect(Object.keys(response.content), status).toEqual(["application/json"]);
       expect(response.content["application/json"].schema).toEqual({
-        $ref: "#/components/schemas/OAuthError",
+        $ref:
+          status === "429"
+            ? "#/components/schemas/OAuthTooManyRequests"
+            : "#/components/schemas/OAuthError",
       });
     }
     expect(effectiveSecurity(doc, found.op)).toEqual([{}]);
@@ -707,5 +724,157 @@ describe("identity contract", () => {
     expect(byId["UserRoles_list"].op.description).toContain("config");
     const source = doc.components.schemas.AssignmentSource;
     expect(source.enum ?? source.anyOf?.flatMap((s: Doc) => s.enum)).toEqual(["config", "api"]);
+  });
+
+  // U58
+  it("U58: exactly ten operations declare 429", () => {
+    const with429 = ops.filter((o) => o.op.responses["429"]).map((o) => o.id);
+    expect(with429.sort()).toEqual(limited.slice().sort());
+  });
+
+  // U59
+  it("U59: Retry-After of each 429 response", () => {
+    for (const id of limited) {
+      const header = byId[id].op.responses["429"].headers["Retry-After"];
+      expect(header.required, id).toBe(true);
+      expect(header.schema.type, id).toBe("integer");
+      expect(header.schema.format, id).toBe("int32");
+      expect(header.schema.minimum, id).toBe(jsonLimited.includes(id) ? 0 : 1);
+    }
+  });
+
+  // U60
+  it("U60: the OAuth 429 response", () => {
+    for (const id of oauthLimited) {
+      const response = byId[id].op.responses["429"];
+      expect(Object.keys(response.content), id).toEqual(["application/json"]);
+      expect(response.content["application/json"].schema, id).toEqual({
+        $ref: "#/components/schemas/OAuthTooManyRequests",
+      });
+      expect(response.headers["Cache-Control"], id).toBeDefined();
+      expect(response.headers["Pragma"], id).toBeDefined();
+    }
+  });
+
+  // U61
+  it("U61: OAuth rate limit schemas have the fields of OAuthError", () => {
+    const error = doc.components.schemas.OAuthError;
+    for (const name of ["OAuthTooManyRequests", "OAuthServiceUnavailable"]) {
+      const schema = doc.components.schemas[name];
+      expect(Object.keys(schema.properties).sort(), name).toEqual(
+        Object.keys(error.properties).sort(),
+      );
+      expect(schema.required, name).toEqual(error.required);
+    }
+  });
+
+  // U62
+  it("U62: the HTML 429 response", () => {
+    for (const id of htmlLimited) {
+      const response = byId[id].op.responses["429"];
+      expect(Object.keys(response.content), id).toEqual(["text/html"]);
+      // The HTML body is a string, as in HtmlPage. The emitter inlines it.
+      expect(response.content["text/html"].schema, id).toEqual({ type: "string" });
+    }
+  });
+
+  // U63
+  it("U63: the problem 429 response", () => {
+    for (const id of jsonLimited) {
+      const response = byId[id].op.responses["429"];
+      expect(Object.keys(response.content), id).toEqual([
+        "application/problem+json",
+      ]);
+      const schema = response.content["application/problem+json"].schema;
+      expect(schema, id).toEqual({ $ref: "#/components/schemas/TooManyRequests" });
+      const resolved = resolveRef(doc, schema);
+      expect(resolved.allOf, id).toEqual([{ $ref: "#/components/schemas/Problem" }]);
+      expect(resolveRef(doc, resolved.allOf[0]).required, id).toContain("code");
+    }
+  });
+
+  // U64
+  it("U64: 503 of MeApiTokens_create and PermissionManifests_publish", () => {
+    for (const id of ["MeApiTokens_create", "PermissionManifests_publish"]) {
+      const response = byId[id].op.responses["503"];
+      expect(response, id).toBeDefined();
+      const schema = response.content["application/problem+json"].schema;
+      expect(schema, id).toEqual({ $ref: "#/components/schemas/ServiceUnavailable" });
+      const resolved = resolveRef(doc, schema);
+      expect(resolveRef(doc, resolved.allOf[0]).required, id).toContain("code");
+      expect(byId[id].op.description, id).toContain("rate_limited");
+      expect(byId[id].op.description, id).toContain("unavailable");
+    }
+  });
+
+  // U65
+  it("U65: 503 of OAuth_userinfo", () => {
+    const response = byId["OAuth_userinfo"].op.responses["503"];
+    expect(Object.keys(response.content)).toEqual(["application/json"]);
+    expect(response.content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/OAuthServiceUnavailable",
+    });
+    const header = response.headers["Retry-After"];
+    expect(header.required ?? false).toBe(false);
+    expect(header.schema.format).toBe("int32");
+    expect(header.schema.minimum).toBe(1);
+    expect(response.headers["Cache-Control"]).toBeDefined();
+    expect(response.headers["Pragma"]).toBeDefined();
+  });
+
+  // U66
+  it("U66: 503 of OAuth_authorize and OAuth_endSession", () => {
+    for (const id of htmlLimited) {
+      const response = byId[id].op.responses["503"];
+      expect(Object.keys(response.content), id).toEqual(["text/html"]);
+      // The HTML body is a string, as in HtmlPage. The emitter inlines it.
+      expect(response.content["text/html"].schema, id).toEqual({ type: "string" });
+      const header = response.headers["Retry-After"];
+      expect(header.required ?? false, id).toBe(false);
+      expect(header.schema.format, id).toBe("int32");
+      expect(header.schema.minimum, id).toBe(1);
+    }
+  });
+
+  // U67
+  it("U67: the existing 503 responses do not change", () => {
+    for (const id of ["OAuth_token", "OAuth_revoke", "OAuth_introspect"]) {
+      const response = byId[id].op.responses["503"];
+      expect(response.content["application/json"].schema, id).toEqual({
+        $ref: "#/components/schemas/OAuthError",
+      });
+      expect(response.headers?.["Retry-After"], id).toBeUndefined();
+    }
+    expect(doc.components.schemas.ServiceUnavailable.allOf).toEqual([
+      { $ref: "#/components/schemas/Problem" },
+    ]);
+  });
+
+  // U68
+  it("U68: rate limit examples", async () => {
+    const data: any = await examples("rate-limit.json");
+    const oauthCheck = check("OAuthTooManyRequests");
+    for (const value of data.valid) expect(oauthCheck(value)).toBe(true);
+    data.invalid.forEach((value: unknown, i: number) =>
+      expect(oauthCheck(value), `invalid example ${i}`).toBe(false),
+    );
+    const problemCheck = check("TooManyRequests");
+    for (const value of data.validProblem) expect(problemCheck(value)).toBe(true);
+    data.invalidProblem.forEach((value: unknown, i: number) =>
+      expect(problemCheck(value), `invalid problem ${i}`).toBe(false),
+    );
+  });
+
+  // U69
+  it("U69: OAuthError stays the schema of the other non-200 statuses", () => {
+    for (const id of ["OAuth_token", "OAuth_revoke", "OAuth_introspect"]) {
+      for (const [status, response] of Object.entries<Doc>(byId[id].op.responses)) {
+        if (status === "200" || status === "429") continue;
+        expect(
+          response.content["application/json"].schema,
+          `${id} ${status}`,
+        ).toEqual({ $ref: "#/components/schemas/OAuthError" });
+      }
+    }
   });
 });
