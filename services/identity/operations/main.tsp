@@ -12,5 +12,7 @@ import "./client-roles.tsp";
 import "./sessions.tsp";
 import "./me-api-tokens.tsp";
 import "./api-tokens.tsp";
+import "./me-mfa.tsp";
+import "./user-mfa.tsp";
 import "./agents.tsp";
 import "./agent-roles.tsp";

@@ -63,6 +63,19 @@ components:
           description: |-
             The agent that acts for the subject. The identity service sets it for a token exchange with an actor.
             `act.principal_type` is `agent`. `act.sub` is the ID of the agent.
+        amr:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthenticationMethod'
+          description: |-
+            The methods that the user used for the login of the session.
+            Only in user tokens from the code flow and from refresh.
+            Not in service, agent, workflow, or exchange tokens.
+            Absent when the session has no recorded method.
+        auth_time:
+          type: integer
+          format: int64
+          description: The time of the last login of the session, in seconds since the Unix epoch. Only in user tokens from the code flow and from refresh.
       description: |-
         Claims of an access token (RFC 9068).
         The JWT header `typ` is `at+jwt`. The header `alg` is `ES256`.
@@ -93,6 +106,25 @@ components:
         $ref: '#/components/schemas/AppKey'
       minItems: 1
       description: One or more application keys. Use it as the audience of a token.
+    AuthenticationMethod:
+      anyOf:
+        - type: string
+        - type: string
+          enum:
+            - pwd
+            - otp
+            - rec
+            - hwk
+            - user
+            - fed
+            - mfa
+      description: |-
+        A method that the user used for the login of a session (RFC 8176).
+        RFC 8176 registers all values except `rec` and `fed`. The registered values are not a complete set.
+        The values are `pwd` (password), `otp` (TOTP code), `rec` (recovery code),
+        `hwk` (passkey), `user` (user verification of a passkey), `fed` (upstream OIDC login),
+        and `mfa` (two or more factors, or one passkey with user verification).
+        A service that needs MFA checks that `amr` contains `mfa`. It does not check the other values.
     BadRequest:
       type: object
       allOf:
@@ -421,6 +453,13 @@ components:
             $ref: '#/components/schemas/FieldError'
           description: Field errors. Only for validation errors.
       description: Problem details for an HTTP API (RFC 9457).
+    ReauthenticationRequired:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: |-
+        The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
+        The client must start a new authorization request with `max_age`. A token refresh does not help.
     RequestScopeString:
       type: string
       maxLength: 4096

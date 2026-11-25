@@ -67,6 +67,19 @@ model Unauthorized extends Problem {
   @statusCode statusCode: 401;
 }
 
+/**
+ * The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
+ * The client must start a new authorization request with `max_age`. A token refresh does not help.
+ */
+@error
+@friendlyName("ReauthenticationRequired")
+model ReauthenticationRequired extends Problem {
+  @statusCode statusCode: 401;
+
+  /** Challenge, for example `Bearer error="insufficient_user_authentication", max_age="300"`. */
+  @header("WWW-Authenticate") wwwAuthenticate?: string;
+}
+
 /** The principal does not have the permission. */
 @error
 @friendlyName("Forbidden")

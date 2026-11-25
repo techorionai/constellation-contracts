@@ -40,6 +40,26 @@ model ActorClaim {
 }
 
 /**
+ * A method that the user used for the login of a session (RFC 8176).
+ * RFC 8176 registers all values except `rec` and `fed`. The registered values are not a complete set.
+ * The values are `pwd` (password), `otp` (TOTP code), `rec` (recovery code),
+ * `hwk` (passkey), `user` (user verification of a passkey), `fed` (upstream OIDC login),
+ * and `mfa` (two or more factors, or one passkey with user verification).
+ * A service that needs MFA checks that `amr` contains `mfa`. It does not check the other values.
+ */
+@friendlyName("AuthenticationMethod")
+union AuthenticationMethod {
+  string,
+  "pwd",
+  "otp",
+  "rec",
+  "hwk",
+  "user",
+  "fed",
+  "mfa",
+}
+
+/**
  * Claims of an access token (RFC 9068).
  * The JWT header `typ` is `at+jwt`. The header `alg` is `ES256`.
  * The identity service writes `aud` as one string and always sets `nbf`.
@@ -82,4 +102,15 @@ model AccessTokenClaims {
    * `act.principal_type` is `agent`. `act.sub` is the ID of the agent.
    */
   act?: ActorClaim;
+
+  /**
+   * The methods that the user used for the login of the session.
+   * Only in user tokens from the code flow and from refresh.
+   * Not in service, agent, workflow, or exchange tokens.
+   * Absent when the session has no recorded method.
+   */
+  amr?: AuthenticationMethod[];
+
+  /** The time of the last login of the session, in seconds since the Unix epoch. Only in user tokens from the code flow and from refresh. */
+  auth_time?: int64;
 }

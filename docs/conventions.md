@@ -210,6 +210,13 @@ OAuth 2.0 and OIDC clients expect standard paths and standard errors. Thus the O
 - TypeSpec cannot remove a namespace prefix. Thus a service with OAuth endpoints has no `@route` on its namespace. Each interface has its own `@route`. A `/v1` interface uses `@route("/v1/<resource>")`. An OAuth interface uses its standard path.
 - All other operations of the service follow the normal rules: `/v1` and `Problem`.
 
+### Authentication methods and step-up
+
+- A user access token and an ID token can have the optional claims `amr` and `auth_time`. `amr` lists the methods of the login of the session. The values are `pwd`, `otp`, `rec`, `hwk`, `user`, `fed`, and `mfa`. A service that needs MFA checks that `amr` contains `mfa`. It does not check the other values.
+- An operation that needs a fresh MFA login gives 401 `ReauthenticationRequired` with the code `reauthentication_required`. The response has the RFC 9470 challenge in the header `WWW-Authenticate`, for example `Bearer error="insufficient_user_authentication", max_age="300"`. The status is 401 as in RFC 9470. It is not 403 as for `insufficient_scope` (RFC 6750).
+- A client reads the `error` parameter of `WWW-Authenticate`. For `insufficient_user_authentication`, the client does not refresh the token, because a refresh keeps the old `auth_time` and `amr`. The client starts a new authorization request with `max_age` and `prompt=login`.
+- A browser ceremony, for example the TOTP enrollment or the display of recovery codes, is a hosted page of the service. It is outside the contract, like `/login` and `/setup`.
+
 ### Token exchange
 
 The token endpoint accepts the grant `urn:ietf:params:oauth:grant-type:token-exchange` (RFC 8693). The request has the fields `subject_token`, `subject_token_type`, `audience`, and `scope`. It can also have `actor_token`, `actor_token_type`, and `requested_token_type`. `actor_token` and `actor_token_type` go together. The response has `issued_token_type`.
