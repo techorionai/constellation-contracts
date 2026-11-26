@@ -58,6 +58,10 @@
       "description": "Read and change the own MFA factors."
     },
     {
+      "key": "identity:mfa:read",
+      "description": "Read the MFA state of any user."
+    },
+    {
       "key": "identity:mfa:reset",
       "description": "Reset the MFA of any user. An operation with this permission also needs identity:admin."
     },
@@ -94,6 +98,7 @@
         "identity:api_token:read",
         "identity:api_token:revoke",
         "identity:mfa:manage_own",
+        "identity:mfa:read",
         "identity:mfa:reset",
         "identity:agent:read",
         "identity:agent:write",

@@ -460,6 +460,8 @@ components:
       description: |-
         The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
         The client must start a new authorization request with `max_age`. A token refresh does not help.
+        The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
+        An operation that uses this model always sends the header with the code `reauthentication_required`.
     RequestScopeString:
       type: string
       maxLength: 4096

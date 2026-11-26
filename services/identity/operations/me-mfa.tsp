@@ -29,6 +29,9 @@ interface MeTotp {
    * Else the response is 401 with the code `reauthentication_required` and the header
    * `WWW-Authenticate: Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`.
    * A token with no `amr` (service, agent, exchange, or API token) gets the same response.
+   * A token with `act` does not satisfy MFA.
+   * The operation writes an audit entry with the action `identity:mfa:totp_remove`, the target user, and the result.
+   * It sends a security notice to the user.
    * Error code of `Forbidden`: `user_token_required`.
    * Error code of `NotFound`: `totp_not_found`.
    * Error code of `Conflict`: `mfa_required`. The policy requires MFA for the user and TOTP is the last second factor.

@@ -1952,6 +1952,9 @@ paths:
         Else the response is 401 with the code `reauthentication_required` and the header
         `WWW-Authenticate: Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`.
         A token with no `amr` (service, agent, exchange, or API token) gets the same response.
+        A token with `act` does not satisfy MFA.
+        The operation writes an audit entry with the action `identity:mfa:totp_remove`, the target user, and the result.
+        It sends a security notice to the user.
         Error code of `Forbidden`: `user_token_required`.
         Error code of `NotFound`: `totp_not_found`.
         Error code of `Conflict`: `mfa_required`. The policy requires MFA for the user and TOTP is the last second factor.
@@ -1971,10 +1974,12 @@ paths:
           description: |-
             The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
             The client must start a new authorization request with `max_age`. A token refresh does not help.
+            The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
+            An operation that uses this model always sends the header with the code `reauthentication_required`.
           headers:
             WWW-Authenticate:
               required: false
-              description: Challenge, for example `Bearer error="insufficient_user_authentication", max_age="300"`.
+              description: Challenge, for example `Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`. `error_description` is optional.
               schema:
                 type: string
           content:
@@ -2666,7 +2671,7 @@ paths:
   /v1/users/{userId}/mfa:
     get:
       operationId: UserMfa_get
-      description: 'Read the MFA state of a user. Error code of `NotFound`: `user_not_found`.'
+      description: 'Read the MFA state of a user. The permission is `identity:mfa:read`, not `identity:user:read`. Error code of `NotFound`: `user_not_found`.'
       parameters:
         - name: userId
           in: path
@@ -2711,7 +2716,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/InternalServerError'
       x-required-scopes:
-        - identity:user:read
+        - identity:mfa:read
     delete:
       operationId: UserMfa_reset
       description: |-
@@ -2722,8 +2727,15 @@ paths:
         Else the response is 401 with the code `reauthentication_required` and the header
         `WWW-Authenticate: Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`.
         A token with no `amr` (service, agent, exchange, or API token) gets the same response.
+        A token with `act` does not satisfy MFA.
         Error code of `NotFound`: `user_not_found`.
-        The order of the checks: the token (401), the scopes (403), `reauthentication_required` (401), `user_not_found` (404).
+        Error code of `Conflict`: `mfa_required`. The `userId` is the `sub` of the token.
+        An administrator cannot reset the own MFA with this operation. The check goes around the rule of `MeTotp_remove`.
+        The administrator uses the subcommand `identity reset-mfa <email>` of the identity service for this recovery.
+        The operation writes an audit entry with the action `identity:mfa:reset`, the target user, and the result.
+        It sends a security notice to the user.
+        The order of the checks: the token (401), the scopes (403), `reauthentication_required` (401),
+        `user_not_found` (404), `mfa_required` (409).
       parameters:
         - name: userId
           in: path
@@ -2743,10 +2755,12 @@ paths:
           description: |-
             The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
             The client must start a new authorization request with `max_age`. A token refresh does not help.
+            The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
+            An operation that uses this model always sends the header with the code `reauthentication_required`.
           headers:
             WWW-Authenticate:
               required: false
-              description: Challenge, for example `Bearer error="insufficient_user_authentication", max_age="300"`.
+              description: Challenge, for example `Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`. `error_description` is optional.
               schema:
                 type: string
           content:
@@ -2767,6 +2781,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/NotFound'
+        '409':
+          description: The request conflicts with the state of the resource.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
         '500':
           description: The server has an internal error.
           content:
@@ -4054,6 +4074,8 @@ components:
       description: |-
         The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
         The client must start a new authorization request with `max_age`. A token refresh does not help.
+        The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
+        An operation that uses this model always sends the header with the code `reauthentication_required`.
     RequestScopeString:
       type: string
       maxLength: 4096

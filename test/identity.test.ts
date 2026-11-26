@@ -69,7 +69,7 @@ const rest: [string, string, string, string, string[]][] = [
   ["AgentRoles_remove", "delete", "/v1/agents/{agentId}/roles/{role}", "204", ["identity:role:assign"]],
   ["MeMfa_get", "get", "/v1/me/mfa", "200", ["identity:mfa:manage_own"]],
   ["MeTotp_remove", "delete", "/v1/me/totp", "204", ["identity:mfa:manage_own"]],
-  ["UserMfa_get", "get", "/v1/users/{userId}/mfa", "200", ["identity:user:read"]],
+  ["UserMfa_get", "get", "/v1/users/{userId}/mfa", "200", ["identity:mfa:read"]],
   ["UserMfa_reset", "delete", "/v1/users/{userId}/mfa", "204", ["identity:mfa:reset", "identity:admin"]],
 ];
 
@@ -398,6 +398,7 @@ describe("identity contract", () => {
         "api_token:read",
         "api_token:revoke",
         "mfa:manage_own",
+        "mfa:read",
         "mfa:reset",
         "agent:read",
         "agent:write",
@@ -419,6 +420,10 @@ describe("identity contract", () => {
     expect(
       manifest.permissions.find((p: Doc) => p.key === "identity:mfa:reset").description,
     ).toContain("also needs identity:admin");
+    const holders = manifest.defaultRoles
+      .filter((r: Doc) => r.permissions.includes("identity:mfa:read"))
+      .map((r: Doc) => r.key);
+    expect(holders).toEqual(["admin"]);
     const exchangers = manifest.defaultRoles
       .filter((r: Doc) => r.permissions.includes("identity:token:exchange"))
       .map((r: Doc) => r.key);
@@ -924,7 +929,7 @@ describe("identity contract", () => {
     const expected: Record<string, string[]> = {
       MeMfa_get: ["identity:mfa:manage_own"],
       MeTotp_remove: ["identity:mfa:manage_own"],
-      UserMfa_get: ["identity:user:read"],
+      UserMfa_get: ["identity:mfa:read"],
       UserMfa_reset: ["identity:mfa:reset", "identity:admin"],
     };
     for (const id of mfaOps) {
@@ -957,6 +962,14 @@ describe("identity contract", () => {
       expect(schema.properties[name], name).toBeDefined();
       expect(schema.required, name).not.toContain(name);
     }
+    expect(schema.properties.amr.items).toEqual({
+      $ref: "#/components/schemas/AuthenticationMethod",
+    });
+    const aud = doc.components.schemas.IdTokenAudience.anyOf;
+    expect(aud).toContainEqual({ type: "string" });
+    const list = aud.find((a: Doc) => a.$ref)?.$ref.split("/").pop();
+    expect(doc.components.schemas[list].type).toBe("array");
+    expect(doc.components.schemas[list].minItems).toBe(1);
   });
 
   // U73
@@ -992,16 +1005,24 @@ describe("identity contract", () => {
     const common = await loadCommon();
     const schema = common.components.schemas.ReauthenticationRequired;
     expect(schema.allOf).toEqual([{ $ref: "#/components/schemas/Problem" }]);
-    const check401 = byId["MeTotp_remove"].op.responses["401"];
-    const header = check401.headers["WWW-Authenticate"];
-    expect(header.required).toBe(false);
+    expect(schema.description).toContain("reauthentication_required");
+    for (const id of ["MeTotp_remove", "UserMfa_reset"]) {
+      const header = byId[id].op.responses["401"].headers["WWW-Authenticate"];
+      expect(header.required, id).toBe(false);
+      expect(header.schema, id).toEqual({ type: "string" });
+    }
   });
 
   // U77
   it("U77: the 401 response of the step-up operations", () => {
     for (const id of ["MeTotp_remove", "UserMfa_reset"]) {
       const response = byId[id].op.responses["401"];
-      expect(JSON.stringify(response.content), id).toContain("ReauthenticationRequired");
+      const schema = response.content["application/problem+json"].schema;
+      const refs = (schema.oneOf ?? schema.anyOf).map((s: Doc) => s.$ref);
+      expect(refs.sort(), id).toEqual([
+        "#/components/schemas/ReauthenticationRequired",
+        "#/components/schemas/Unauthorized",
+      ]);
       expect(response.headers?.["WWW-Authenticate"], id).toBeDefined();
     }
   });
@@ -1057,12 +1078,34 @@ describe("identity contract", () => {
       expect(byId[id].op.responses["503"], id).toBeUndefined();
     }
     expect(ops.filter((o) => o.op.responses["429"])).toHaveLength(limited.length);
+    expect(limited).toHaveLength(10);
   });
+
   // U84
   it("U84: the step-up rule in docs/conventions.md", async () => {
     const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
     expect(text).toContain("insufficient_user_authentication");
     expect(text).toContain("max_age");
     expect(text).toContain("the client does not refresh the token");
+  });
+
+  // U85
+  it("U85: an exchange token does not satisfy MFA", async () => {
+    const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
+    expect(text).toContain("A token with `act` does not satisfy MFA");
+    expect(text).toContain("The new token has no `amr` and no `auth_time`.");
+  });
+
+  // U86
+  it("U86: the doc comments of the audit entry and the self reset", () => {
+    const remove = byId["MeTotp_remove"].op.description;
+    expect(remove).toContain("identity:mfa:totp_remove");
+    expect(remove).toContain("security notice");
+    const reset = byId["UserMfa_reset"].op;
+    expect(reset.description).toContain("identity:mfa:reset");
+    expect(reset.description).toContain("security notice");
+    expect(reset.description).toContain("mfa_required");
+    expect(reset.description).toContain("identity reset-mfa");
+    expect(reset.responses["409"]).toBeDefined();
   });
 });
