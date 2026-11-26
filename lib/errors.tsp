@@ -68,7 +68,8 @@ model Unauthorized extends Problem {
 }
 
 /**
- * The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
+ * The token does not show a fresh login or a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
+ * A fresh login needs `auth_time` at most 5 minutes old. A fresh MFA login also needs `mfa` in `amr`.
  * The client must start a new authorization request with `max_age`. A token refresh does not help.
  * The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
  * An operation that uses this model always sends the header with the code `reauthentication_required`.
@@ -78,7 +79,7 @@ model Unauthorized extends Problem {
 model ReauthenticationRequired extends Problem {
   @statusCode statusCode: 401;
 
-  /** Challenge, for example `Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`. `error_description` is optional. */
+  /** Challenge, for example `Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`. `error_description` is optional. A second example is `Bearer error="insufficient_user_authentication", error_description="A fresh login is necessary", max_age="300"`. */
   @header("WWW-Authenticate") wwwAuthenticate?: string;
 }
 

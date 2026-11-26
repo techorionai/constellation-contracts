@@ -15,3 +15,4 @@ import "./agent.tsp";
 import "./id-token.tsp";
 import "./mfa.tsp";
 import "./passkey.tsp";
+import "./identity-link.tsp";

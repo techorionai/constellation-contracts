@@ -66,8 +66,12 @@ interface MePasskeys {
    * or an ID that is not a UUID gives the same 404.
    * Error code of `Conflict`: `mfa_required`. The policy requires MFA for the user and the passkey is the last second factor.
    * The rule counts TOTP and the passkeys that the service accepts.
+   * Error code of `Conflict`: `last_login_method`. The removal would leave the user with no login method.
+   * The methods that count are a password, a passkey that the service accepts, and a link of a provider that is on.
+   * A provider is on when the operator sets the client ID. A stored passkey does not count when the service turns off passkeys.
+   * A link of a provider that is off does not count.
    * The order of the checks: the token (401), the scopes (403), `user_token_required` (403),
-   * `reauthentication_required` (401), `passkey_not_found` (404), `mfa_required` (409).
+   * `reauthentication_required` (401), `passkey_not_found` (404), `mfa_required` (409), `last_login_method` (409).
    */
   @extension("x-required-scopes", #["identity:mfa:manage_own"])
   @route("/{passkeyId}")
