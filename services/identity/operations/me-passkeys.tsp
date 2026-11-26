@@ -59,6 +59,8 @@ interface MePasskeys {
    * The operation writes an audit entry with the action `identity:mfa:passkey_remove`, the target user, and the result.
    * It sends a security notice to the user.
    * The removal revokes all sessions and all refresh tokens of the user that were made with a passkey (`amr` contains `hwk`).
+   * The removal also revokes the personal API tokens that a session with `hwk` in `amr` made.
+   * The service records the `amr` of the making session in the API token. The `ApiToken` model does not show it.
    * The service does not record which passkey made a session, so the revocation does not depend on the removed passkey.
    * An old refresh token of such a session then gets no new access token.
    * Error code of `Forbidden`: `user_token_required`.

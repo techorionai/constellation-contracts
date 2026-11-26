@@ -20,7 +20,7 @@ model IdentityLink {
   /** The upstream provider. It identifies the link of the user. */
   provider: UpstreamProvider;
 
-  /** The email from the upstream account at the last login. Only for show to people. Absent when the service has no email. */
+  /** The email from the upstream account at the last login. Only for show to people. The value is not verified. The upstream account owner can change it. A client must not use it to identify the user or to make a security decision. Absent when the service has no email. */
   email?: string;
 
   /** The time of the link. */

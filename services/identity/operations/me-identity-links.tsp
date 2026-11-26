@@ -35,6 +35,8 @@ interface MeIdentityLinks {
    * It sends a security notice to the user.
    * The removal revokes all sessions and all refresh tokens of the user that were made with an upstream login (`amr` contains `fed`).
    * The current session is also revoked if it has `fed`.
+   * The removal also revokes the personal API tokens that a session with `fed` in `amr` made.
+   * The service records the `amr` of the making session in the API token. The `ApiToken` model does not show it.
    * Error code of `Forbidden`: `user_token_required`.
    * Error code of `NotFound`: `identity_link_not_found`. A provider that the user did not link, an unknown provider, or a wrong-case provider gives the same 404.
    * Error code of `Conflict`: `last_login_method`. The removal would leave the user with no login method.

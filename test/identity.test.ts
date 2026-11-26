@@ -1518,6 +1518,34 @@ describe("identity contract", () => {
     expect(text).toContain("A fresh login is necessary");
   });
 
+  // U112
+  it("U112: the removals of identity links revoke the API tokens with fed", () => {
+    for (const id of ["MeIdentityLinks_remove", "UserIdentityLinks_remove"]) {
+      expect(byId[id].op.description, id).toMatch(
+        /revokes the personal API tokens that a session with `fed` in `amr` made/,
+      );
+    }
+  });
+
+  // U113
+  it("U113: MePasskeys_remove revokes the API tokens with hwk", () => {
+    expect(byId["MePasskeys_remove"].op.description).toMatch(
+      /revokes the personal API tokens that a session with `hwk` in `amr` made/,
+    );
+  });
+
+  // U114
+  it("U114: the email description and the ApiToken schema", () => {
+    const description: string =
+      doc.components.schemas.IdentityLink.properties.email.description;
+    expect(description).toContain("The value is not verified.");
+    expect(description).toContain("The upstream account owner can change it.");
+    expect(description).toContain(
+      "must not use it to identify the user or to make a security decision",
+    );
+    expect(doc.components.schemas.ApiToken.properties.amr).toBeUndefined();
+  });
+
   // U111
   it("U111: the earlier tests still pass", () => {
     // The tests U1 to U97 run in the same suite with the updates above.

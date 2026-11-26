@@ -1962,6 +1962,8 @@ paths:
         It sends a security notice to the user.
         The removal revokes all sessions and all refresh tokens of the user that were made with an upstream login (`amr` contains `fed`).
         The current session is also revoked if it has `fed`.
+        The removal also revokes the personal API tokens that a session with `fed` in `amr` made.
+        The service records the `amr` of the making session in the API token. The `ApiToken` model does not show it.
         Error code of `Forbidden`: `user_token_required`.
         Error code of `NotFound`: `identity_link_not_found`. A provider that the user did not link, an unknown provider, or a wrong-case provider gives the same 404.
         Error code of `Conflict`: `last_login_method`. The removal would leave the user with no login method.
@@ -2210,6 +2212,8 @@ paths:
         The operation writes an audit entry with the action `identity:mfa:passkey_remove`, the target user, and the result.
         It sends a security notice to the user.
         The removal revokes all sessions and all refresh tokens of the user that were made with a passkey (`amr` contains `hwk`).
+        The removal also revokes the personal API tokens that a session with `hwk` in `amr` made.
+        The service records the `amr` of the making session in the API token. The `ApiToken` model does not show it.
         The service does not record which passkey made a session, so the revocation does not depend on the removed passkey.
         An old refresh token of such a session then gets no new access token.
         Error code of `Forbidden`: `user_token_required`.
@@ -3004,6 +3008,8 @@ paths:
         The operation writes an audit entry with the action `identity:identity_link:remove`, the target user, the provider, and the result.
         It sends a security notice to the user.
         The removal revokes all sessions and all refresh tokens of the user that were made with an upstream login (`amr` contains `fed`).
+        The removal also revokes the personal API tokens that a session with `fed` in `amr` made.
+        The service records the `amr` of the making session in the API token. The `ApiToken` model does not show it.
         Error code of `NotFound`: `user_not_found` or `identity_link_not_found`.
         Error code of `Conflict`: `last_login_method`. The removal would leave the user with no login method.
         The methods that count are a password, a passkey that the service accepts, and a link of a provider that is on.
@@ -4238,7 +4244,7 @@ components:
           description: The upstream provider. It identifies the link of the user.
         email:
           type: string
-          description: The email from the upstream account at the last login. Only for show to people. Absent when the service has no email.
+          description: The email from the upstream account at the last login. Only for show to people. The value is not verified. The upstream account owner can change it. A client must not use it to identify the user or to make a security decision. Absent when the service has no email.
         createdAt:
           type: string
           format: date-time

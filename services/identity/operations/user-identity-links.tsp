@@ -36,6 +36,8 @@ interface UserIdentityLinks {
    * The operation writes an audit entry with the action `identity:identity_link:remove`, the target user, the provider, and the result.
    * It sends a security notice to the user.
    * The removal revokes all sessions and all refresh tokens of the user that were made with an upstream login (`amr` contains `fed`).
+   * The removal also revokes the personal API tokens that a session with `fed` in `amr` made.
+   * The service records the `amr` of the making session in the API token. The `ApiToken` model does not show it.
    * Error code of `NotFound`: `user_not_found` or `identity_link_not_found`.
    * Error code of `Conflict`: `last_login_method`. The removal would leave the user with no login method.
    * The methods that count are a password, a passkey that the service accepts, and a link of a provider that is on.
