@@ -899,13 +899,14 @@ describe("identity contract", () => {
       });
       expect(response.headers?.["Retry-After"], id).toBeUndefined();
     }
+    // The optional Retry-After header of ServiceUnavailable came with issue 18.
     for (const id of ["MeApiTokens_create", "PermissionManifests_publish"]) {
-      const response = byId[id].op.responses["503"];
-      expect(response.headers?.["Retry-After"], id).toBeUndefined();
+      const header = byId[id].op.responses["503"].headers?.["Retry-After"];
+      expect(header.required ?? false, id).toBe(false);
     }
-    expect(doc.components.schemas.ServiceUnavailable.allOf).toEqual([
-      { $ref: "#/components/schemas/Problem" },
-    ]);
+    expect(doc.components.schemas.ServiceUnavailable.allOf[0]).toEqual({
+      $ref: "#/components/schemas/Problem",
+    });
   });
 
   // U68

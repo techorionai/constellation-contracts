@@ -114,6 +114,16 @@ model UnprocessableContent extends Problem {
   @statusCode statusCode: 422;
 }
 
+/**
+ * The request body is larger than the limit of the service. The code is `content_too_large`.
+ * The operator of the service sets the limit.
+ */
+@error
+@friendlyName("ContentTooLarge")
+model ContentTooLarge extends Problem {
+  @statusCode statusCode: 413;
+}
+
 /** The client sent too many requests. */
 @error
 @friendlyName("TooManyRequests")
@@ -138,6 +148,11 @@ model InternalServerError extends Problem {
 @friendlyName("ServiceUnavailable")
 model ServiceUnavailable extends Problem {
   @statusCode statusCode: 503;
+
+  /** Seconds to wait before the next request. Optional. */
+  @minValue(0)
+  @header("Retry-After")
+  retryAfter?: int32;
 }
 
 /** Errors that most operations can return. */

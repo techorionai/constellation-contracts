@@ -57,6 +57,14 @@ components:
           allOf:
             - $ref: '#/components/schemas/PrincipalType'
           description: Type of the principal in `sub`.
+        app:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: |-
+            The key of the app of the service client. It is not the audience.
+            Only access tokens from the client credentials grant have it, with `principal_type` `service`.
+            Exchange tokens, user tokens, and API tokens do not have it.
+            A verifier uses `app` only when `principal_type` is `service`.
         act:
           allOf:
             - $ref: '#/components/schemas/ActorClaim'
@@ -213,6 +221,13 @@ components:
       allOf:
         - $ref: '#/components/schemas/Problem'
       description: The request conflicts with the state of the resource.
+    ContentTooLarge:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: |-
+        The request body is larger than the limit of the service. The code is `content_too_large`.
+        The operator of the service sets the limit.
     CursorPageParams:
       type: object
       properties:
