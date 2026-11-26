@@ -35,6 +35,7 @@ interface MeTotp {
    * Error code of `Forbidden`: `user_token_required`.
    * Error code of `NotFound`: `totp_not_found`.
    * Error code of `Conflict`: `mfa_required`. The policy requires MFA for the user and TOTP is the last second factor.
+   * The rule counts TOTP and the passkeys that the service accepts.
    * The order of the checks: the token (401), the scopes (403), `user_token_required` (403),
    * `reauthentication_required` (401), `totp_not_found` (404), `mfa_required` (409).
    */

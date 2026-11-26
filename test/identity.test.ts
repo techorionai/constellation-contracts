@@ -71,6 +71,10 @@ const rest: [string, string, string, string, string[]][] = [
   ["MeTotp_remove", "delete", "/v1/me/totp", "204", ["identity:mfa:manage_own"]],
   ["UserMfa_get", "get", "/v1/users/{userId}/mfa", "200", ["identity:mfa:read"]],
   ["UserMfa_reset", "delete", "/v1/users/{userId}/mfa", "204", ["identity:mfa:reset", "identity:admin"]],
+  ["MePasskeys_list", "get", "/v1/me/passkeys", "200", ["identity:mfa:manage_own"]],
+  ["MePasskeys_update", "patch", "/v1/me/passkeys/{passkeyId}", "200", ["identity:mfa:manage_own"]],
+  ["MePasskeys_remove", "delete", "/v1/me/passkeys/{passkeyId}", "204", ["identity:mfa:manage_own"]],
+  ["UserPasskeys_list", "get", "/v1/users/{userId}/passkeys", "200", ["identity:mfa:read"]],
 ];
 
 /** The OAuth and discovery operations. */
@@ -255,8 +259,8 @@ describe("identity contract", () => {
   // U26
   it("U26: list operations have page parameters and a page result", () => {
     const lists = ops.filter((o) => o.id.endsWith("_list"));
-    expect(lists.length).toBe(11);
-    for (const id of ["MeApiTokens_list", "UserApiTokens_list", "Agents_list", "AgentRoles_list"]) {
+    expect(lists.length).toBe(13);
+    for (const id of ["MeApiTokens_list", "UserApiTokens_list", "Agents_list", "AgentRoles_list", "MePasskeys_list", "UserPasskeys_list"]) {
       expect(lists.map((o) => o.id), id).toContain(id);
     }
     for (const o of lists) {
@@ -348,6 +352,7 @@ describe("identity contract", () => {
       "ClientRoles_assign",
       "ClientRoles_remove",
       "Invites_create",
+      "MePasskeys_remove",
     ];
     const unprocessable: string[] = [
       "PermissionManifests_publish",
@@ -358,6 +363,7 @@ describe("identity contract", () => {
       "ClientKeys_add",
       "ClientRoles_list",
       "ClientRoles_remove",
+      "MePasskeys_update",
     ];
     for (const id of conflict) {
       expect(byId[id].op.responses["409"], id).toBeDefined();
@@ -1107,5 +1113,169 @@ describe("identity contract", () => {
     expect(reset.description).toContain("mfa_required");
     expect(reset.description).toContain("identity reset-mfa");
     expect(reset.responses["409"]).toBeDefined();
+  });
+
+  const passkeyOps = ["MePasskeys_list", "MePasskeys_update", "MePasskeys_remove", "UserPasskeys_list"];
+
+  // U87
+  it("U87: x-required-scopes of the passkey operations", async () => {
+    const manifest = JSON.parse(
+      await readFile(join(root, "services", "identity", "manifest.json"), "utf8"),
+    );
+    const keys: string[] = manifest.permissions.map((p: Doc) => p.key);
+    const expected: Record<string, string[]> = {
+      MePasskeys_list: ["identity:mfa:manage_own"],
+      MePasskeys_update: ["identity:mfa:manage_own"],
+      MePasskeys_remove: ["identity:mfa:manage_own"],
+      UserPasskeys_list: ["identity:mfa:read"],
+    };
+    for (const id of passkeyOps) {
+      const scopes = byId[id].op["x-required-scopes"];
+      expect(scopes, id).toEqual(expected[id]);
+      for (const key of scopes) expect(keys, id).toContain(key);
+    }
+    expect(byId["UserPasskeys_list"].op.description).toContain("not `identity:user:read`");
+  });
+
+  // U88
+  it("U88: the Passkey schema", () => {
+    const schema = doc.components.schemas.Passkey;
+    expect([...schema.required].sort()).toEqual(["createdAt", "id", "name", "synced"]);
+    expect(schema.properties.lastUsedAt).toBeDefined();
+    expect(schema.properties.lastUsedAt.nullable).toBeUndefined();
+    for (const name of ["publicKey", "credentialId", "userHandle", "signCount"]) {
+      expect(schema.properties[name], name).toBeUndefined();
+    }
+  });
+
+  // U89
+  it("U89: PasskeyUpdate examples", async () => {
+    const validate = check("PasskeyUpdate");
+    const { valid, invalid } = await examples("passkey-update.json");
+    for (const value of valid) expect(validate(value)).toBe(true);
+    invalid.forEach((value, i) =>
+      expect(validate(value), `invalid example ${i}`).toBe(false),
+    );
+  });
+
+  // U90
+  it("U90: Passkey examples", async () => {
+    const validate = check("Passkey");
+    const { valid, invalid } = await examples("passkey.json");
+    for (const value of valid) expect(validate(value)).toBe(true);
+    invalid.forEach((value, i) =>
+      expect(validate(value), `invalid example ${i}`).toBe(false),
+    );
+  });
+
+  // U91
+  it("U91: MfaStatus examples with passkeys", async () => {
+    const validate = check("MfaStatus");
+    const base = { enabled: true, required: false, recoveryCodesRemaining: 0 };
+    expect(validate(base)).toBe(true);
+    expect(validate({ ...base, passkeys: 0 })).toBe(true);
+    expect(validate({ ...base, passkeys: 3 })).toBe(true);
+    expect(validate({ ...base, passkeys: -1 })).toBe(false);
+    expect(validate({ ...base, passkeys: null })).toBe(false);
+  });
+
+  // U92
+  it("U92: MePasskeys_update", () => {
+    const { op } = byId["MePasskeys_update"];
+    for (const status of ["200", "401", "403", "404", "422"]) {
+      expect(op.responses[status], status).toBeDefined();
+    }
+    const refs = (op.responses["401"].content["application/problem+json"].schema.oneOf ??
+      op.responses["401"].content["application/problem+json"].schema.anyOf).map((s: Doc) => s.$ref);
+    expect(refs).toContain("#/components/schemas/ReauthenticationRequired");
+    expect(op.responses["401"].headers?.["WWW-Authenticate"]).toBeDefined();
+    for (const part of [
+      "identity:mfa:passkey_rename",
+      "old name and the new name",
+      "insufficient_user_authentication",
+      'max_age="300"',
+      "`act`",
+      "reauthentication_required",
+      "The order of the checks",
+    ]) {
+      expect(op.description, part).toContain(part);
+    }
+    expect(op.responses["200"].content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/Passkey",
+    });
+    for (const text of ["user_token_required", "passkey_not_found"]) {
+      expect(op.description, text).toContain(text);
+    }
+    for (const id of ["MePasskeys_update", "MePasskeys_remove"]) {
+      const param = (byId[id].op.parameters as Doc[])
+        .map((p) => resolveRef(doc, p))
+        .find((p) => p.name === "passkeyId");
+      expect(param?.in, id).toBe("path");
+      expect(param?.required, id).toBe(true);
+      expect(param?.schema, id).toEqual({ type: "string" });
+    }
+  });
+
+  // U93
+  it("U93: the passkey list operations", () => {
+    for (const id of ["MePasskeys_list", "UserPasskeys_list"]) {
+      const { op } = byId[id];
+      expect(op.responses["200"].content["application/json"].schema, id).toEqual({
+        $ref: "#/components/schemas/PasskeyPage",
+      });
+      expect(op.description, id).toContain("`createdAt`");
+    }
+    expect(byId["UserPasskeys_list"].op.responses["404"]).toBeDefined();
+    expect(byId["MePasskeys_list"].op.description).toContain("user_token_required");
+    expect(byId["UserPasskeys_list"].op.description).toContain("user_not_found");
+  });
+
+  // U94
+  it("U94: MePasskeys_remove responses", () => {
+    const { op } = byId["MePasskeys_remove"];
+    for (const status of ["204", "401", "403", "404", "409"]) {
+      expect(op.responses[status], status).toBeDefined();
+    }
+    const response = op.responses["401"];
+    const schema = response.content["application/problem+json"].schema;
+    const refs = (schema.oneOf ?? schema.anyOf).map((s: Doc) => s.$ref);
+    expect(refs).toContain("#/components/schemas/ReauthenticationRequired");
+    expect(response.headers?.["WWW-Authenticate"]).toBeDefined();
+  });
+
+  // U95
+  it("U95: the doc comment of MePasskeys_remove", () => {
+    const text = byId["MePasskeys_remove"].op.description;
+    for (const part of [
+      "identity:mfa:passkey_remove",
+      "security notice",
+      "revokes all sessions and all refresh tokens",
+      "`hwk`",
+      "insufficient_user_authentication",
+      'max_age="300"',
+      "`act`",
+      "reauthentication_required",
+      "passkey_not_found",
+      "mfa_required",
+      "The order of the checks",
+    ]) {
+      expect(text, part).toContain(part);
+    }
+  });
+
+  // U96
+  it("U96: passkeys count as second factors in the doc comments", () => {
+    const mfa = doc.components.schemas.MfaStatus.properties;
+    expect(mfa.enabled.description).toContain("passkey");
+    expect(mfa.passkeys.description).toContain("absent");
+    expect(byId["MeTotp_remove"].op.description).toContain("passkey");
+    expect(byId["UserMfa_reset"].op.description).toContain("TOTP and passkeys");
+  });
+
+  // U97
+  it("U97: the hosted ceremonies rule names the passkey ceremonies", async () => {
+    const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
+    expect(text).toContain("the passkey registration");
+    expect(text).toContain("the passkey login");
   });
 });

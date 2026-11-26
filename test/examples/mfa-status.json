@@ -21,6 +21,18 @@
       "enabled": false,
       "required": false,
       "recoveryCodesRemaining": 0
+    },
+    {
+      "enabled": true,
+      "required": false,
+      "passkeys": 0,
+      "recoveryCodesRemaining": 0
+    },
+    {
+      "enabled": true,
+      "required": false,
+      "passkeys": 3,
+      "recoveryCodesRemaining": 8
     }
   ],
   "invalid": [
@@ -38,6 +50,18 @@
       "enabled": false,
       "required": false,
       "totp": null,
+      "recoveryCodesRemaining": 0
+    },
+    {
+      "enabled": true,
+      "required": false,
+      "passkeys": -1,
+      "recoveryCodesRemaining": 0
+    },
+    {
+      "enabled": true,
+      "required": false,
+      "passkeys": null,
       "recoveryCodesRemaining": 0
     }
   ]

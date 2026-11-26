@@ -1,0 +1,26 @@
+{
+  "valid": [
+    {
+      "id": "6f1c1f0e-2b7a-4c1d-9a55-3f0b8f6a9c10",
+      "name": "Laptop",
+      "createdAt": "2026-11-01T10:00:00Z",
+      "lastUsedAt": "2026-11-20T08:30:00Z",
+      "synced": true
+    },
+    {
+      "id": "6f1c1f0e-2b7a-4c1d-9a55-3f0b8f6a9c11",
+      "name": "Security key",
+      "createdAt": "2026-11-01T10:00:00Z",
+      "synced": false
+    }
+  ],
+  "invalid": [
+    {
+      "id": "6f1c1f0e-2b7a-4c1d-9a55-3f0b8f6a9c10",
+      "name": "Laptop",
+      "createdAt": "2026-11-01T10:00:00Z",
+      "lastUsedAt": null,
+      "synced": true
+    }
+  ]
+}

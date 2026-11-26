@@ -14,5 +14,7 @@ import "./me-api-tokens.tsp";
 import "./api-tokens.tsp";
 import "./me-mfa.tsp";
 import "./user-mfa.tsp";
+import "./me-passkeys.tsp";
+import "./user-passkeys.tsp";
 import "./agents.tsp";
 import "./agent-roles.tsp";
