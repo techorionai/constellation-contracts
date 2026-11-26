@@ -1,0 +1,15 @@
+{
+  "valid": [
+    { "name": "a" },
+    { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    { "name": "My key 2" }
+  ],
+  "invalid": [
+    { "name": "" },
+    { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    { "name": " a" },
+    { "name": "a " },
+    { "name": " " },
+    { "name": "a\nb" }
+  ]
+}
