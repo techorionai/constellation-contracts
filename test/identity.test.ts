@@ -75,6 +75,10 @@ const rest: [string, string, string, string, string[]][] = [
   ["MePasskeys_update", "patch", "/v1/me/passkeys/{passkeyId}", "200", ["identity:mfa:manage_own"]],
   ["MePasskeys_remove", "delete", "/v1/me/passkeys/{passkeyId}", "204", ["identity:mfa:manage_own"]],
   ["UserPasskeys_list", "get", "/v1/users/{userId}/passkeys", "200", ["identity:mfa:read"]],
+  ["MeIdentityLinks_list", "get", "/v1/me/identity-links", "200", ["identity:identity_link:manage_own"]],
+  ["MeIdentityLinks_remove", "delete", "/v1/me/identity-links/{provider}", "204", ["identity:identity_link:manage_own"]],
+  ["UserIdentityLinks_list", "get", "/v1/users/{userId}/identity-links", "200", ["identity:identity_link:read"]],
+  ["UserIdentityLinks_remove", "delete", "/v1/users/{userId}/identity-links/{provider}", "204", ["identity:identity_link:remove", "identity:admin"]],
 ];
 
 /** The OAuth and discovery operations. */
@@ -259,8 +263,8 @@ describe("identity contract", () => {
   // U26
   it("U26: list operations have page parameters and a page result", () => {
     const lists = ops.filter((o) => o.id.endsWith("_list"));
-    expect(lists.length).toBe(13);
-    for (const id of ["MeApiTokens_list", "UserApiTokens_list", "Agents_list", "AgentRoles_list", "MePasskeys_list", "UserPasskeys_list"]) {
+    expect(lists.length).toBe(15);
+    for (const id of ["MeApiTokens_list", "UserApiTokens_list", "Agents_list", "AgentRoles_list", "MePasskeys_list", "UserPasskeys_list", "MeIdentityLinks_list", "UserIdentityLinks_list"]) {
       expect(lists.map((o) => o.id), id).toContain(id);
     }
     for (const o of lists) {
@@ -353,6 +357,9 @@ describe("identity contract", () => {
       "ClientRoles_remove",
       "Invites_create",
       "MePasskeys_remove",
+      "UserMfa_reset",
+      "MeIdentityLinks_remove",
+      "UserIdentityLinks_remove",
     ];
     const unprocessable: string[] = [
       "PermissionManifests_publish",
@@ -406,6 +413,9 @@ describe("identity contract", () => {
         "mfa:manage_own",
         "mfa:read",
         "mfa:reset",
+        "identity_link:manage_own",
+        "identity_link:read",
+        "identity_link:remove",
         "agent:read",
         "agent:write",
         "token:exchange",
@@ -422,6 +432,7 @@ describe("identity contract", () => {
     expect(user.permissions).toEqual([
       "identity:api_token:manage_own",
       "identity:mfa:manage_own",
+      "identity:identity_link:manage_own",
     ]);
     expect(
       manifest.permissions.find((p: Doc) => p.key === "identity:mfa:reset").description,
@@ -1072,9 +1083,10 @@ describe("identity contract", () => {
     for (const status of ["204", "401", "403", "404"]) {
       expect(op.responses[status], status).toBeDefined();
     }
-    for (const text of ["user_not_found", "reauthentication_required", "revokes all sessions"]) {
+    for (const text of ["user_not_found", "reauthentication_required", "revokes all sessions", "last_login_method"]) {
       expect(op.description, text).toContain(text);
     }
+    expect(op.responses["409"]).toBeDefined();
   });
 
   // U83
@@ -1257,6 +1269,7 @@ describe("identity contract", () => {
       "reauthentication_required",
       "passkey_not_found",
       "mfa_required",
+      "last_login_method",
       "The order of the checks",
     ]) {
       expect(text, part).toContain(part);
@@ -1277,5 +1290,237 @@ describe("identity contract", () => {
     const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
     expect(text).toContain("the passkey registration");
     expect(text).toContain("the passkey login");
+  });
+
+  const linkOps = ["MeIdentityLinks_list", "MeIdentityLinks_remove", "UserIdentityLinks_list", "UserIdentityLinks_remove"];
+  const methods = [
+    "a password",
+    "a passkey that the service accepts",
+    "a link of a provider that is on",
+  ];
+
+  // U98
+  it("U98: the operation table of the identity link operations", () => {
+    const expected: Record<string, [string, string, string]> = {
+      MeIdentityLinks_list: ["get", "/v1/me/identity-links", "200"],
+      MeIdentityLinks_remove: ["delete", "/v1/me/identity-links/{provider}", "204"],
+      UserIdentityLinks_list: ["get", "/v1/users/{userId}/identity-links", "200"],
+      UserIdentityLinks_remove: ["delete", "/v1/users/{userId}/identity-links/{provider}", "204"],
+    };
+    for (const id of linkOps) {
+      const [method, path, status] = expected[id];
+      expect(byId[id].method, id).toBe(method);
+      expect(byId[id].path, id).toBe(path);
+      expect(byId[id].op.responses[status], id).toBeDefined();
+    }
+    expect(ops.filter((o) => o.id.includes("IdentityLinks_")).map((o) => o.id).sort()).toEqual([...linkOps].sort());
+  });
+
+  // U99
+  it("U99: the identity link list operations are page operations", () => {
+    const lists = ops.filter((o) => o.id.endsWith("_list"));
+    expect(lists.length).toBe(15);
+    for (const id of ["MeIdentityLinks_list", "UserIdentityLinks_list"]) {
+      const { op } = byId[id];
+      const names = (op.parameters as Doc[]).map((p) => resolveRef(doc, p).name);
+      expect(names, id).toContain("pageToken");
+      expect(names, id).toContain("pageSize");
+      expect(op.responses["200"].content["application/json"].schema, id).toEqual({
+        $ref: "#/components/schemas/IdentityLinkPage",
+      });
+    }
+  });
+
+  // U100
+  it("U100: both link removals have the response 409", () => {
+    for (const id of ["MeIdentityLinks_remove", "UserIdentityLinks_remove"]) {
+      expect(byId[id].op.responses["409"], id).toBeDefined();
+    }
+  });
+
+  // U101
+  it("U101: x-required-scopes and the manifest of the identity link keys", async () => {
+    const manifest = JSON.parse(
+      await readFile(join(root, "services", "identity", "manifest.json"), "utf8"),
+    );
+    const keys: string[] = manifest.permissions.map((p: Doc) => p.key);
+    const expected: Record<string, string[]> = {
+      MeIdentityLinks_list: ["identity:identity_link:manage_own"],
+      MeIdentityLinks_remove: ["identity:identity_link:manage_own"],
+      UserIdentityLinks_list: ["identity:identity_link:read"],
+      UserIdentityLinks_remove: ["identity:identity_link:remove", "identity:admin"],
+    };
+    for (const id of linkOps) {
+      const scopes = byId[id].op["x-required-scopes"];
+      expect(scopes, id).toEqual(expected[id]);
+      for (const key of scopes) expect(keys, id).toContain(key);
+    }
+    const role = (key: string) => manifest.defaultRoles.find((r: Doc) => r.key === key);
+    expect(role("user").permissions).toEqual([
+      "identity:api_token:manage_own",
+      "identity:mfa:manage_own",
+      "identity:identity_link:manage_own",
+    ]);
+    expect([...role("admin").permissions].sort()).toEqual([...keys].sort());
+    const holders = (key: string) =>
+      manifest.defaultRoles
+        .filter((r: Doc) => r.permissions.includes(key))
+        .map((r: Doc) => r.key)
+        .sort();
+    expect(holders("identity:identity_link:read")).toEqual(["admin"]);
+    expect(holders("identity:identity_link:remove")).toEqual(["admin"]);
+    expect(holders("identity:identity_link:manage_own")).toEqual(["admin", "user"]);
+  });
+
+  // U102
+  it("U102: the descriptions of the remove and reset keys", async () => {
+    const manifest = JSON.parse(
+      await readFile(join(root, "services", "identity", "manifest.json"), "utf8"),
+    );
+    for (const key of ["identity:identity_link:remove", "identity:mfa:reset"]) {
+      expect(
+        manifest.permissions.find((p: Doc) => p.key === key).description,
+        key,
+      ).toContain("also needs identity:admin");
+    }
+  });
+
+  // U103
+  it("U103: the IdentityLink schema", () => {
+    const schema = doc.components.schemas.IdentityLink;
+    expect(schema.properties.subject).toBeUndefined();
+    expect(schema.properties.sub).toBeUndefined();
+    expect([...schema.required].sort()).toEqual(["createdAt", "provider"]);
+    expect(schema.required).not.toContain("email");
+    expect(schema.required).not.toContain("lastUsedAt");
+    expect(schema.properties.email.nullable).toBeUndefined();
+    expect(schema.properties.lastUsedAt.nullable).toBeUndefined();
+  });
+
+  // U104
+  it("U104: valid IdentityLink examples", async () => {
+    const validate = check("IdentityLink");
+    const { valid } = await examples("identity-link.json");
+    expect(valid.length).toBeGreaterThanOrEqual(3);
+    for (const value of valid) expect(validate(value)).toBe(true);
+    expect(valid.map((v) => (v as Doc).provider)).toEqual(
+      expect.arrayContaining(["google", "microsoft", "okta"]),
+    );
+  });
+
+  // U105
+  it("U105: invalid IdentityLink examples", async () => {
+    const validate = check("IdentityLink");
+    const { invalid } = await examples("identity-link.json");
+    expect(invalid.length).toBe(4);
+    invalid.forEach((value, i) =>
+      expect(validate(value), `invalid example ${i}`).toBe(false),
+    );
+  });
+
+  // U106
+  it("U106: responses and path parameters of the identity link operations", () => {
+    for (const id of ["MeIdentityLinks_list", "UserIdentityLinks_list"]) {
+      for (const status of ["200", "401", "403"]) {
+        expect(byId[id].op.responses[status], `${id} ${status}`).toBeDefined();
+      }
+    }
+    expect(byId["UserIdentityLinks_list"].op.responses["404"]).toBeDefined();
+    for (const id of ["MeIdentityLinks_remove", "UserIdentityLinks_remove"]) {
+      for (const status of ["204", "401", "403", "404", "409"]) {
+        expect(byId[id].op.responses[status], `${id} ${status}`).toBeDefined();
+      }
+      const response = byId[id].op.responses["401"];
+      const schema = response.content["application/problem+json"].schema;
+      const refs = (schema.oneOf ?? schema.anyOf).map((s: Doc) => s.$ref);
+      expect(refs, id).toContain("#/components/schemas/ReauthenticationRequired");
+      expect(response.headers?.["WWW-Authenticate"], id).toBeDefined();
+    }
+    const pathParam = (id: string, name: string) =>
+      (byId[id].op.parameters as Doc[])
+        .map((p) => resolveRef(doc, p))
+        .find((p) => p.name === name);
+    for (const id of ["MeIdentityLinks_remove", "UserIdentityLinks_remove"]) {
+      expect(pathParam(id, "provider")?.in, id).toBe("path");
+    }
+    for (const id of ["UserIdentityLinks_list", "UserIdentityLinks_remove"]) {
+      expect(pathParam(id, "userId")?.in, id).toBe("path");
+    }
+    for (const id of linkOps) {
+      expect(byId[id].op.responses["429"], id).toBeUndefined();
+      expect(byId[id].op.responses["503"], id).toBeUndefined();
+    }
+  });
+
+  // U107
+  it("U107: the doc comments of the identity link operations", () => {
+    const text = (id: string) => byId[id].op.description as string;
+    for (const id of ["MeIdentityLinks_list", "MeIdentityLinks_remove"]) {
+      expect(text(id), id).toContain("user_token_required");
+    }
+    for (const id of ["MeIdentityLinks_remove", "UserIdentityLinks_remove"]) {
+      expect(text(id), id).toContain("identity_link_not_found");
+    }
+    for (const id of ["UserIdentityLinks_list", "UserIdentityLinks_remove"]) {
+      expect(text(id), id).toContain("user_not_found");
+    }
+    expect(text("UserIdentityLinks_list")).toContain("identity:identity_link:read");
+    expect(text("UserIdentityLinks_list")).toContain("not `identity:user:read`");
+    for (const id of ["MeIdentityLinks_list", "UserIdentityLinks_list"]) {
+      expect(text(id), id).toContain("`createdAt` ascending, then `provider` ascending");
+    }
+  });
+
+  // U108
+  it("U108: the doc comments of the identity link removals", () => {
+    for (const id of ["MeIdentityLinks_remove", "UserIdentityLinks_remove"]) {
+      const text = byId[id].op.description as string;
+      for (const part of [
+        "identity:identity_link:remove",
+        "security notice",
+        "revokes all sessions and all refresh tokens",
+        "`fed`",
+        "reauthentication_required",
+        "insufficient_user_authentication",
+        'max_age="300"',
+        "last_login_method",
+        "The order of the checks",
+        ...methods,
+      ]) {
+        expect(text, `${id} ${part}`).toContain(part);
+      }
+    }
+    expect(byId["MeIdentityLinks_remove"].op.description).toContain("A fresh login is necessary");
+    expect(byId["UserIdentityLinks_remove"].op.description).toContain("A fresh MFA login is necessary");
+  });
+
+  // U109
+  it("U109: the doc comments of MePasskeys_remove and UserMfa_reset", () => {
+    for (const id of ["MePasskeys_remove", "UserMfa_reset"]) {
+      const { op } = byId[id];
+      expect(op.responses["409"], id).toBeDefined();
+      for (const part of ["last_login_method", "mfa_required", ...methods]) {
+        expect(op.description, `${id} ${part}`).toContain(part);
+      }
+      expect(op.description, id).toMatch(
+        /`mfa_required` \(409\), `last_login_method` \(409\)/,
+      );
+    }
+  });
+
+  // U110
+  it("U110: the hosted flows and the fresh login rule in docs/conventions.md", async () => {
+    const text = await readFile(join(root, "docs", "conventions.md"), "utf8");
+    expect(text).toContain("the upstream login");
+    expect(text).toContain("the upstream link flow");
+    expect(text).toContain("the upstream invite flow");
+    expect(text).toContain("auth_time");
+    expect(text).toContain("A fresh login is necessary");
+  });
+
+  // U111
+  it("U111: the earlier tests still pass", () => {
+    // The tests U1 to U97 run in the same suite with the updates above.
+    expect(Object.keys(byId).length).toBe(rest.length + oauth.length);
   });
 });
