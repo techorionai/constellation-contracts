@@ -16,5 +16,7 @@ import "./me-mfa.tsp";
 import "./user-mfa.tsp";
 import "./me-passkeys.tsp";
 import "./user-passkeys.tsp";
+import "./me-identity-links.tsp";
+import "./user-identity-links.tsp";
 import "./agents.tsp";
 import "./agent-roles.tsp";

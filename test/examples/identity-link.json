@@ -1,0 +1,36 @@
+{
+  "valid": [
+    {
+      "provider": "google",
+      "email": "ada@example.com",
+      "createdAt": "2026-11-01T10:00:00Z",
+      "lastUsedAt": "2026-11-20T08:30:00Z"
+    },
+    {
+      "provider": "microsoft",
+      "createdAt": "2026-11-02T10:00:00Z"
+    },
+    {
+      "provider": "okta",
+      "createdAt": "2026-11-03T10:00:00Z"
+    }
+  ],
+  "invalid": [
+    {
+      "provider": "google",
+      "email": null,
+      "createdAt": "2026-11-01T10:00:00Z"
+    },
+    {
+      "provider": "google",
+      "createdAt": "2026-11-01T10:00:00Z",
+      "lastUsedAt": null
+    },
+    {
+      "createdAt": "2026-11-01T10:00:00Z"
+    },
+    {
+      "provider": "google"
+    }
+  ]
+}

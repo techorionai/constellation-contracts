@@ -59,6 +59,8 @@ interface MePasskeys {
    * The operation writes an audit entry with the action `identity:mfa:passkey_remove`, the target user, and the result.
    * It sends a security notice to the user.
    * The removal revokes all sessions and all refresh tokens of the user that were made with a passkey (`amr` contains `hwk`).
+   * The removal also revokes the personal API tokens that a session with `hwk` in `amr` made.
+   * The service records the `amr` of the making session in the API token. The `ApiToken` model does not show it.
    * The service does not record which passkey made a session, so the revocation does not depend on the removed passkey.
    * An old refresh token of such a session then gets no new access token.
    * Error code of `Forbidden`: `user_token_required`.
@@ -66,8 +68,12 @@ interface MePasskeys {
    * or an ID that is not a UUID gives the same 404.
    * Error code of `Conflict`: `mfa_required`. The policy requires MFA for the user and the passkey is the last second factor.
    * The rule counts TOTP and the passkeys that the service accepts.
+   * Error code of `Conflict`: `last_login_method`. The removal would leave the user with no login method.
+   * The methods that count are a password, a passkey that the service accepts, and a link of a provider that is on.
+   * A provider is on when the operator sets the client ID. A stored passkey does not count when the service turns off passkeys.
+   * A link of a provider that is off does not count.
    * The order of the checks: the token (401), the scopes (403), `user_token_required` (403),
-   * `reauthentication_required` (401), `passkey_not_found` (404), `mfa_required` (409).
+   * `reauthentication_required` (401), `passkey_not_found` (404), `mfa_required` (409), `last_login_method` (409).
    */
   @extension("x-required-scopes", #["identity:mfa:manage_own"])
   @route("/{passkeyId}")

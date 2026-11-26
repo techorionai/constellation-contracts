@@ -25,10 +25,15 @@ interface UserMfa {
    * Error code of `Conflict`: `mfa_required`. The `userId` is the `sub` of the token.
    * An administrator cannot reset the own MFA with this operation. The check goes around the rule of `MeTotp_remove`.
    * The administrator uses the subcommand `identity reset-mfa <email>` of the identity service for this recovery.
+   * Error code of `Conflict`: `last_login_method`. The reset removes all passkeys.
+   * It gives 409 if the user then has no password and no usable link. The operation does not set the user to `invited`.
+   * The methods that count are a password, a passkey that the service accepts, and a link of a provider that is on.
+   * A provider is on when the operator sets the client ID. A stored passkey does not count when the service turns off passkeys.
+   * A link of a provider that is off does not count.
    * The operation writes an audit entry with the action `identity:mfa:reset`, the target user, and the result.
    * It sends a security notice to the user.
    * The order of the checks: the token (401), the scopes (403), `reauthentication_required` (401),
-   * `user_not_found` (404), `mfa_required` (409).
+   * `user_not_found` (404), `mfa_required` (409), `last_login_method` (409).
    */
   @extension("x-required-scopes", #["identity:mfa:reset", "identity:admin"])
   @delete
