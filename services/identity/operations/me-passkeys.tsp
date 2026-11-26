@@ -25,16 +25,26 @@ interface MePasskeys {
 
   /**
    * Rename a passkey of the user.
+   * The token needs a fresh MFA login: `amr` contains `mfa` and `auth_time` is at most 5 minutes old.
+   * Else the response is 401 with the code `reauthentication_required` and the header
+   * `WWW-Authenticate: Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`.
+   * A token with no `amr` (service, agent, exchange, or API token) gets the same response.
+   * A token with `act` does not satisfy MFA.
+   * The operation writes an audit entry with the action `identity:mfa:passkey_rename`, the target user, the result,
+   * and a change summary with the old name and the new name.
    * Error code of `Forbidden`: `user_token_required`.
    * Error code of `NotFound`: `passkey_not_found`. A passkey of another user, an unknown ID,
    * or an ID that is not a UUID gives the same 404.
    * `UnprocessableContent` has the schema errors of `PasskeyUpdate`.
+   * The order of the checks: the token (401), the scopes (403), `user_token_required` (403),
+   * `reauthentication_required` (401), `passkey_not_found` (404), the schema (422).
    */
   @extension("x-required-scopes", #["identity:mfa:manage_own"])
   @route("/{passkeyId}")
   @patch
   update(@path passkeyId: string, @body update: PasskeyUpdate):
     | Passkey
+    | ReauthenticationRequired
     | NotFound
     | UnprocessableContent
     | CommonErrors;
@@ -48,6 +58,9 @@ interface MePasskeys {
    * A token with `act` does not satisfy MFA.
    * The operation writes an audit entry with the action `identity:mfa:passkey_remove`, the target user, and the result.
    * It sends a security notice to the user.
+   * The removal revokes all sessions and all refresh tokens of the user that were made with a passkey (`amr` contains `hwk`).
+   * The service does not record which passkey made a session, so the revocation does not depend on the removed passkey.
+   * An old refresh token of such a session then gets no new access token.
    * Error code of `Forbidden`: `user_token_required`.
    * Error code of `NotFound`: `passkey_not_found`. A passkey of another user, an unknown ID,
    * or an ID that is not a UUID gives the same 404.

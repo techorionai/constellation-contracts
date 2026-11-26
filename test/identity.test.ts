@@ -1185,6 +1185,21 @@ describe("identity contract", () => {
     for (const status of ["200", "401", "403", "404", "422"]) {
       expect(op.responses[status], status).toBeDefined();
     }
+    const refs = (op.responses["401"].content["application/problem+json"].schema.oneOf ??
+      op.responses["401"].content["application/problem+json"].schema.anyOf).map((s: Doc) => s.$ref);
+    expect(refs).toContain("#/components/schemas/ReauthenticationRequired");
+    expect(op.responses["401"].headers?.["WWW-Authenticate"]).toBeDefined();
+    for (const part of [
+      "identity:mfa:passkey_rename",
+      "old name and the new name",
+      "insufficient_user_authentication",
+      'max_age="300"',
+      "`act`",
+      "reauthentication_required",
+      "The order of the checks",
+    ]) {
+      expect(op.description, part).toContain(part);
+    }
     expect(op.responses["200"].content["application/json"].schema).toEqual({
       $ref: "#/components/schemas/Passkey",
     });
@@ -1234,6 +1249,8 @@ describe("identity contract", () => {
     for (const part of [
       "identity:mfa:passkey_remove",
       "security notice",
+      "revokes all sessions and all refresh tokens",
+      "`hwk`",
       "insufficient_user_authentication",
       'max_age="300"',
       "`act`",

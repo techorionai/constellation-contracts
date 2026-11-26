@@ -4,7 +4,7 @@ namespace Constellation.Identity;
 
 /**
  * A passkey (WebAuthn credential) of a user. It has no key material.
- * The name rule: the name has no leading or trailing white space and no line break.
+ * The name rule: see the `name` field.
  * Names are not unique for a user. The service stores the name as sent.
  */
 @friendlyName("Passkey")
@@ -14,12 +14,13 @@ model Passkey {
   id: string;
 
   /**
-   * A name that the user gives. The name has no leading or trailing white space and no line break.
+   * A name that the user gives. The name has no leading or trailing white space, no control character, no format character (for example U+200B or U+202E), and no line or paragraph separator.
+   * The pattern uses Unicode property classes. A client must use it in Unicode mode (the `u` flag in ECMAScript). It then gives the same result as Go RE2.
    * Names are not unique for a user. The service stores the name as sent.
    */
   @minLength(1)
   @maxLength(64)
-  @pattern("^\\S(.*\\S)?$")
+  @pattern("^[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}\\p{Zs}](?:[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]*[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}\\p{Zs}])?$")
   name: string;
 
   /** The time of the registration. */
@@ -36,12 +37,13 @@ model Passkey {
 @friendlyName("PasskeyUpdate")
 model PasskeyUpdate {
   /**
-   * The new name. The name has no leading or trailing white space and no line break.
+   * The new name. The name has no leading or trailing white space, no control character, no format character (for example U+200B or U+202E), and no line or paragraph separator.
+   * The pattern uses Unicode property classes. A client must use it in Unicode mode (the `u` flag in ECMAScript). It then gives the same result as Go RE2.
    * Names are not unique for a user. The service stores the name as sent.
    */
   @minLength(1)
   @maxLength(64)
-  @pattern("^\\S(.*\\S)?$")
+  @pattern("^[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}\\p{Zs}](?:[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]*[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}\\p{Zs}])?$")
   name: string;
 }
 

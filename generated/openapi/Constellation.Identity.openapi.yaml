@@ -1990,10 +1990,19 @@ paths:
       operationId: MePasskeys_update
       description: |-
         Rename a passkey of the user.
+        The token needs a fresh MFA login: `amr` contains `mfa` and `auth_time` is at most 5 minutes old.
+        Else the response is 401 with the code `reauthentication_required` and the header
+        `WWW-Authenticate: Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`.
+        A token with no `amr` (service, agent, exchange, or API token) gets the same response.
+        A token with `act` does not satisfy MFA.
+        The operation writes an audit entry with the action `identity:mfa:passkey_rename`, the target user, the result,
+        and a change summary with the old name and the new name.
         Error code of `Forbidden`: `user_token_required`.
         Error code of `NotFound`: `passkey_not_found`. A passkey of another user, an unknown ID,
         or an ID that is not a UUID gives the same 404.
         `UnprocessableContent` has the schema errors of `PasskeyUpdate`.
+        The order of the checks: the token (401), the scopes (403), `user_token_required` (403),
+        `reauthentication_required` (401), `passkey_not_found` (404), the schema (422).
       parameters:
         - name: passkeyId
           in: path
@@ -2014,11 +2023,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/BadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: |-
+            The token does not show a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
+            The client must start a new authorization request with `max_age`. A token refresh does not help.
+            The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
+            An operation that uses this model always sends the header with the code `reauthentication_required`.
+          headers:
+            WWW-Authenticate:
+              required: false
+              description: Challenge, for example `Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`. `error_description` is optional.
+              schema:
+                type: string
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                anyOf:
+                  - $ref: '#/components/schemas/ReauthenticationRequired'
+                  - $ref: '#/components/schemas/Unauthorized'
         '403':
           description: The principal does not have the permission.
           content:
@@ -2062,6 +2083,9 @@ paths:
         A token with `act` does not satisfy MFA.
         The operation writes an audit entry with the action `identity:mfa:passkey_remove`, the target user, and the result.
         It sends a security notice to the user.
+        The removal revokes all sessions and all refresh tokens of the user that were made with a passkey (`amr` contains `hwk`).
+        The service does not record which passkey made a session, so the revocation does not depend on the removed passkey.
+        An old refresh token of such a session then gets no new access token.
         Error code of `Forbidden`: `user_token_required`.
         Error code of `NotFound`: `passkey_not_found`. A passkey of another user, an unknown ID,
         or an ID that is not a UUID gives the same 404.
@@ -4202,9 +4226,10 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          pattern: ^\S(.*\S)?$
+          pattern: ^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}](?:[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]*[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}])?$
           description: |-
-            A name that the user gives. The name has no leading or trailing white space and no line break.
+            A name that the user gives. The name has no leading or trailing white space, no control character, no format character (for example U+200B or U+202E), and no line or paragraph separator.
+            The pattern uses Unicode property classes. A client must use it in Unicode mode (the `u` flag in ECMAScript). It then gives the same result as Go RE2.
             Names are not unique for a user. The service stores the name as sent.
         createdAt:
           type: string
@@ -4219,7 +4244,7 @@ components:
           description: The authenticator says that the credential is backed up (WebAuthn flag BS) at the last registration or assertion.
       description: |-
         A passkey (WebAuthn credential) of a user. It has no key material.
-        The name rule: the name has no leading or trailing white space and no line break.
+        The name rule: see the `name` field.
         Names are not unique for a user. The service stores the name as sent.
     PasskeyPage:
       type: object
@@ -4244,9 +4269,10 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          pattern: ^\S(.*\S)?$
+          pattern: ^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}](?:[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]*[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}])?$
           description: |-
-            The new name. The name has no leading or trailing white space and no line break.
+            The new name. The name has no leading or trailing white space, no control character, no format character (for example U+200B or U+202E), and no line or paragraph separator.
+            The pattern uses Unicode property classes. A client must use it in Unicode mode (the `u` flag in ECMAScript). It then gives the same result as Go RE2.
             Names are not unique for a user. The service stores the name as sent.
       description: Request to rename a passkey.
     PermissionDefinition:

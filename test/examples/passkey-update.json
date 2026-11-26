@@ -1,15 +1,72 @@
 {
   "valid": [
-    { "name": "a" },
-    { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
-    { "name": "My key 2" }
+    {
+      "name": "a"
+    },
+    {
+      "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "My key 2"
+    },
+    {
+      "name": "Ünï 键 😀"
+    },
+    {
+      "name": "a b"
+    }
   ],
   "invalid": [
-    { "name": "" },
-    { "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
-    { "name": " a" },
-    { "name": "a " },
-    { "name": " " },
-    { "name": "a\nb" }
+    {
+      "name": ""
+    },
+    {
+      "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": " a"
+    },
+    {
+      "name": "a "
+    },
+    {
+      "name": " "
+    },
+    {
+      "name": "a\nb"
+    },
+    {
+      "name": "a\rb"
+    },
+    {
+      "name": "a b"
+    },
+    {
+      "name": "a b"
+    },
+    {
+      "name": " a"
+    },
+    {
+      "name": "a "
+    },
+    {
+      "name": "a\u001bb"
+    },
+    {
+      "name": "a‮b"
+    },
+    {
+      "name": "a​b"
+    },
+    {
+      "name": "a\tb"
+    },
+    {
+      "name": "　a"
+    },
+    {
+      "name": "a­b"
+    }
   ]
 }
