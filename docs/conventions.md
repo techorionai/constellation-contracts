@@ -215,7 +215,7 @@ OAuth 2.0 and OIDC clients expect standard paths and standard errors. Thus the O
 - A user access token and an ID token can have the optional claims `amr` and `auth_time`. `amr` lists the methods of the login of the session. The values are `pwd`, `otp`, `rec`, `hwk`, `user`, `fed`, and `mfa`. A service that needs MFA checks that `amr` contains `mfa`. It does not check the other values. A token with `act` does not satisfy MFA, even if it has `amr`. A service rejects `amr` and `auth_time` of a token with `act`.
 - An operation that needs a fresh MFA login gives 401 `ReauthenticationRequired` with the code `reauthentication_required`. The response has the RFC 9470 challenge in the header `WWW-Authenticate`, for example `Bearer error="insufficient_user_authentication", error_description="A fresh MFA login is necessary", max_age="300"`. The parameter `error_description` is optional. The status is 401 as in RFC 9470. It is not 403 as for `insufficient_scope` (RFC 6750).
 - A client reads the `error` parameter of `WWW-Authenticate`. For `insufficient_user_authentication`, the client does not refresh the token, because a refresh keeps the old `auth_time` and `amr`. The client starts a new authorization request with `max_age` and `prompt=login`.
-- A browser ceremony, for example the TOTP enrollment or the display of recovery codes, is a hosted page of the service. It is outside the contract, like `/login` and `/setup`.
+- A browser ceremony, for example the TOTP enrollment, the passkey registration, the passkey login, or the display of recovery codes, is a hosted page of the service. It is outside the contract, like `/login` and `/setup`.
 
 ### Token exchange
 

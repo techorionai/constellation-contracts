@@ -13,7 +13,7 @@ interface UserMfa {
   get(@path userId: string): MfaStatus | NotFound | CommonErrors;
 
   /**
-   * Reset the MFA of a user. The operation removes all second factors and recovery codes of the user.
+   * Reset the MFA of a user. The operation removes all second factors (TOTP and passkeys) and recovery codes of the user.
    * It revokes all sessions and refresh tokens of the user. It does not remove the password or the API tokens.
    * A user with no second factor also gives 204, and the sessions are also revoked.
    * The token needs a fresh MFA login: `amr` contains `mfa` and `auth_time` is at most 5 minutes old.
