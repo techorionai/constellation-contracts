@@ -98,6 +98,14 @@ model AccessTokenClaims {
   principal_type: PrincipalType;
 
   /**
+   * The key of the app of the service client. It is not the audience.
+   * Only access tokens from the client credentials grant have it, with `principal_type` `service`.
+   * Exchange tokens, user tokens, and API tokens do not have it.
+   * A verifier uses `app` only when `principal_type` is `service`.
+   */
+  app?: AppKey;
+
+  /**
    * The agent that acts for the subject. The identity service sets it for a token exchange with an actor.
    * `act.principal_type` is `agent`. `act.sub` is the ID of the agent.
    */

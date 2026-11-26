@@ -1,0 +1,23 @@
+{
+  "valid": [
+    {
+      "app": "helpdesk",
+      "version": 3,
+      "registeredAt": "2026-11-01T10:00:00Z",
+      "eventTypeCount": 2
+    }
+  ],
+  "invalid": [
+    {
+      "app": "helpdesk",
+      "registeredAt": "2026-11-01T10:00:00Z",
+      "eventTypeCount": 2
+    },
+    {
+      "app": "helpdesk",
+      "version": 3,
+      "registeredAt": "2026-11-01T10:00:00Z",
+      "eventTypeCount": "2"
+    }
+  ]
+}

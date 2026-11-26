@@ -1,0 +1,38 @@
+{
+  "valid": [
+    {
+      "registration": {
+        "source": "/helpdesk",
+        "app": "helpdesk",
+        "eventTypes": [
+          {
+            "type": "helpdesk.ticket.created",
+            "description": "A ticket was created.",
+            "dataSchema": { "type": "object" }
+          }
+        ]
+      },
+      "version": 1,
+      "registeredAt": "2026-11-01T10:00:00Z"
+    }
+  ],
+  "invalid": [
+    {
+      "registration": {
+        "source": "/helpdesk",
+        "app": "helpdesk",
+        "eventTypes": []
+      },
+      "registeredAt": "2026-11-01T10:00:00Z"
+    },
+    {
+      "registration": {
+        "source": "/helpdesk",
+        "app": "helpdesk",
+        "eventTypes": []
+      },
+      "version": "1",
+      "registeredAt": "2026-11-01T10:00:00Z"
+    }
+  ]
+}
