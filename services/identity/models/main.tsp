@@ -12,3 +12,5 @@ import "./token-exchange.tsp";
 import "./introspection.tsp";
 import "./api-token.tsp";
 import "./agent.tsp";
+import "./id-token.tsp";
+import "./mfa.tsp";

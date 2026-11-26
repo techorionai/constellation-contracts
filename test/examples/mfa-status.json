@@ -1,0 +1,44 @@
+{
+  "valid": [
+    {
+      "enabled": true,
+      "required": false,
+      "totp": {
+        "createdAt": "2026-11-01T10:00:00Z",
+        "lastUsedAt": "2026-11-20T08:30:00Z"
+      },
+      "recoveryCodesRemaining": 8
+    },
+    {
+      "enabled": true,
+      "required": true,
+      "totp": {
+        "createdAt": "2026-11-01T10:00:00Z"
+      },
+      "recoveryCodesRemaining": 10
+    },
+    {
+      "enabled": false,
+      "required": false,
+      "recoveryCodesRemaining": 0
+    }
+  ],
+  "invalid": [
+    {
+      "enabled": true,
+      "required": false,
+      "recoveryCodesRemaining": -1
+    },
+    {
+      "enabled": true,
+      "required": false,
+      "recoveryCodesRemaining": 11
+    },
+    {
+      "enabled": false,
+      "required": false,
+      "totp": null,
+      "recoveryCodesRemaining": 0
+    }
+  ]
+}

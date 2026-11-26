@@ -15,7 +15,9 @@
     {
       "iss": "https://identity.example.com",
       "sub": "user-1",
-      "aud": ["helpdesk"],
+      "aud": [
+        "helpdesk"
+      ],
       "exp": 1790000900,
       "iat": 1790000000,
       "nbf": 1790000000,
@@ -23,7 +25,10 @@
       "client_id": "web_helpdesk",
       "scope": "helpdesk:ticket:read helpdesk:ticket:write",
       "principal_type": "user",
-      "act": { "sub": "agent-1", "principal_type": "agent" }
+      "act": {
+        "sub": "agent-1",
+        "principal_type": "agent"
+      }
     },
     {
       "iss": "https://identity.example.com",
@@ -35,6 +40,37 @@
       "client_id": "web_helpdesk",
       "scope": "helpdesk:ticket:read",
       "principal_type": "user"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-8",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "user",
+      "amr": [
+        "pwd",
+        "otp",
+        "mfa"
+      ],
+      "auth_time": 1790000000
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-9",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "user",
+      "amr": [
+        "custom"
+      ]
     }
   ],
   "invalid": [
@@ -81,6 +117,44 @@
       "client_id": "web_helpdesk",
       "scope": "helpdesk:ticket:read",
       "principal_type": "user"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-10",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "user",
+      "amr": "pwd"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-11",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "user",
+      "amr": [
+        1
+      ]
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "jti": "token-12",
+      "client_id": "web_helpdesk",
+      "scope": "helpdesk:ticket:read",
+      "principal_type": "user",
+      "auth_time": "1790000000"
     }
   ]
 }

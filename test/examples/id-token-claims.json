@@ -1,0 +1,67 @@
+{
+  "valid": [
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "web_helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "auth_time": 1790000000,
+      "nonce": "n-1",
+      "sid": "sid-1",
+      "amr": [
+        "pwd",
+        "otp",
+        "mfa"
+      ],
+      "email": "a@example.com",
+      "email_verified": true,
+      "name": "Ada"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "web_helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "auth_time": 1790000000
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": [
+        "web_helpdesk",
+        "web_portal"
+      ],
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "auth_time": 1790000000
+    }
+  ],
+  "invalid": [
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "web_helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": "web_helpdesk",
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "auth_time": 1790000000,
+      "amr": "pwd"
+    },
+    {
+      "iss": "https://identity.example.com",
+      "sub": "user-1",
+      "aud": [],
+      "exp": 1790000900,
+      "iat": 1790000000,
+      "auth_time": 1790000000
+    }
+  ]
+}

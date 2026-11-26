@@ -91,7 +91,7 @@ model TokenResponse {
   @secret
   refresh_token?: string;
 
-  /** ID token. Present if the request had the scope `openid`. */
+  /** ID token. Present if the request had the scope `openid`. Its claims are the model `IdTokenClaims`. */
   @secret
   id_token?: string;
 
