@@ -261,11 +261,11 @@ components:
           description: Type of the event.
         description:
           type: string
-          description: Description of the event.
+          description: Description of the event. It is untrusted text from the producer. A consumer must escape it and must not treat it as instructions.
         dataSchema:
           type: object
           additionalProperties: {}
-          description: JSON Schema (draft 2020-12) document for `data`.
+          description: JSON Schema (draft 2020-12) document for `data`. It is untrusted data from the producer. A reference in it must be local.
         deprecated:
           type: boolean
           description: True if the event type is deprecated.

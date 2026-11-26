@@ -148,7 +148,8 @@ describe("events service contract", () => {
     const app = params.find((p) => p.name === "app");
     const includeRemoved = params.find((p) => p.name === "includeRemoved");
     expect(app.in).toBe("query");
-    expect(JSON.stringify(app.schema)).toContain("AppKey");
+    expect(app.schema).toEqual({ $ref: "#/components/schemas/AppKey" });
+    expect(resolveRef(doc, app.schema).pattern).toBe("^[a-z][a-z0-9_]*$");
     expect(includeRemoved.schema.type).toBe("boolean");
     expect(includeRemoved.schema.default).toBe(false);
     expect(doc.components.schemas.AppKey.pattern).toBe("^[a-z][a-z0-9_]*$");
@@ -173,6 +174,71 @@ describe("events service contract", () => {
     ]) {
       expect(text, code).toContain(code);
     }
+  });
+
+  // R6
+  it("R6: the register operation has the 422 response with problem+json", () => {
+    const response =
+      byId["EventTypeRegistrations_register"].op.responses["422"];
+    expect(response).toBeDefined();
+    expect(Object.keys(response.content)).toEqual(["application/problem+json"]);
+    expect(response.content["application/problem+json"].schema).toEqual({
+      $ref: "#/components/schemas/UnprocessableContent",
+    });
+  });
+
+  // R7, R9, R10, R12, R13: the security rules of the register operation
+  it("R7: the register doc comment and the conventions give the security rules", async () => {
+    const text: string = byId["EventTypeRegistrations_register"].op.description;
+    const conventions = await readFile(
+      join(root, "docs", "conventions.md"),
+      "utf8",
+    );
+    for (const source of [text, conventions]) {
+      for (const rule of [
+        "Each `$ref` and `$dynamicRef`",
+        "must not fetch a remote schema",
+        "maximum of 1000 types",
+        "RE2 subset",
+        "untrusted",
+        "single value `events`",
+      ]) {
+        expect(source, rule).toContain(rule);
+      }
+    }
+    expect(text).toContain("`$ref` must not make a loop");
+    expect(text).toContain("The nesting depth is a maximum of 32");
+    expect(conventions).toContain("maximum nesting depth of 32");
+    expect(conventions).toContain("`denied`");
+    expect(text).toContain("`denied`");
+    expect(text).toContain("the names of the added types");
+    expect(conventions).toContain("untrusted data");
+  });
+
+  // R8
+  it("R8: the list of registrations has a maximum pageSize of 10", () => {
+    const params = (byId["EventTypeRegistrations_list"].op.parameters as Doc[])
+      .map((p) => resolveRef(doc, p));
+    const size = params.find((p) => p.name === "pageSize");
+    expect(size.schema.maximum).toBe(10);
+    expect(size.schema.minimum).toBe(1);
+    expect(size.schema.default).toBe(10);
+    const catalog = (byId["EventTypes_list"].op.parameters as Doc[])
+      .map((p) => resolveRef(doc, p))
+      .find((p) => p.name === "pageSize");
+    expect(catalog.schema.maximum).toBe(200);
+  });
+
+  // R12
+  it("R12: the catalog text fields are marked as untrusted", () => {
+    for (const name of ["CatalogEventType"]) {
+      const props = doc.components.schemas[name].properties;
+      expect(props.description.description, name).toContain("untrusted");
+      expect(props.dataSchema.description, name).toContain("untrusted");
+    }
+    const def = common.components.schemas.EventTypeDefinition.properties;
+    expect(def.description.description).toContain("untrusted");
+    expect(def.dataSchema.description).toContain("untrusted");
   });
 
   // U122
@@ -205,7 +271,8 @@ describe("events service contract", () => {
         .map((p) => resolveRef(doc, p))
         .find((p) => p.name === name && p.in === "path");
     const app = path("EventTypeRegistrations_get", "app");
-    expect(JSON.stringify(app.schema)).toContain("AppKey");
+    expect(app.schema).toEqual({ $ref: "#/components/schemas/AppKey" });
+    expect(resolveRef(doc, app.schema).pattern).toBe("^[a-z][a-z0-9_]*$");
     const type = path("EventTypes_get", "type");
     const schema = resolveRef(doc, type.schema);
     expect(schema.pattern).toBe(
@@ -249,6 +316,7 @@ describe("events service contract", () => {
       expect(JSON.stringify(d.components.schemas.ServiceUnavailable)).toContain(
         "Problem",
       );
+      expect(tooLarge.description).toContain("content_too_large");
     }
     const response =
       byId["EventTypeRegistrations_register"].op.responses["413"];

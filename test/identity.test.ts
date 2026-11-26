@@ -903,8 +903,12 @@ describe("identity contract", () => {
     for (const id of ["MeApiTokens_create", "PermissionManifests_publish"]) {
       const header = byId[id].op.responses["503"].headers?.["Retry-After"];
       expect(header.required ?? false, id).toBe(false);
+      expect(header.schema.type, id).toBe("integer");
+      expect(header.schema.minimum, id).toBe(0);
     }
-    expect(doc.components.schemas.ServiceUnavailable.allOf[0]).toEqual({
+    const unavailable = doc.components.schemas.ServiceUnavailable;
+    expect(unavailable.allOf).toHaveLength(1);
+    expect(unavailable.allOf[0]).toEqual({
       $ref: "#/components/schemas/Problem",
     });
   });

@@ -1,3 +1,6 @@
+import "@typespec/http";
+
+using Http;
 using Constellation.Common;
 
 namespace Constellation.Events;
@@ -13,6 +16,23 @@ model RegisteredEventTypes {
 
   /** Time of the last change. */
   registeredAt: utcDateTime;
+}
+
+/** Query parameters of the list of registrations. The page size is small, because each item can be up to 4 MiB. */
+@friendlyName("RegistrationPageParams")
+model RegistrationPageParams {
+  /** Opaque token from `nextPageToken` of the previous page. */
+  @query
+  @continuationToken
+  @maxLength(1024)
+  pageToken?: string;
+
+  /** Maximum number of items in the page. */
+  @query
+  @pageSize
+  @minValue(1)
+  @maxValue(10)
+  pageSize?: int32 = 10;
 }
 
 /** One page of registrations. */
@@ -46,10 +66,10 @@ model CatalogEventType {
   /** The `source` of the events of the app. */
   source: string;
 
-  /** Description of the event. */
+  /** Description of the event. It is untrusted text from the producer. A consumer must escape it and must not treat it as instructions. */
   description: string;
 
-  /** JSON Schema (draft 2020-12) document for `data`. */
+  /** JSON Schema (draft 2020-12) document for `data`. It is untrusted data from the producer. */
   dataSchema: Record<unknown>;
 
   /** True if the event type is deprecated. */

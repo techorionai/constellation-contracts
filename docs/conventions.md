@@ -301,8 +301,8 @@ An error response has the content type `application/problem+json`. The body is a
 | `Forbidden` | 403 |
 | `NotFound` | 404 |
 | `Conflict` | 409 |
-| `UnprocessableContent` | 422 |
 | `ContentTooLarge` | 413 |
+| `UnprocessableContent` | 422 |
 | `TooManyRequests` | 429 |
 | `InternalServerError` | 500 |
 | `ServiceUnavailable` | 503 |
@@ -334,7 +334,7 @@ Rules for the content of an error:
 
 - The pagination is cursor based. Offset pagination is not allowed.
 - `pageToken` is an opaque token with a maximum of 1024 characters. A client must not parse it.
-- `pageSize` is from 1 to 200. The default is 50.
+- `pageSize` is from 1 to 200. The default is 50. The list of registrations is an exception: its `pageSize` is from 1 to 10, and the default is 10.
 - `nextPageToken` has no value on the last page.
 
 ## Keys and limits
@@ -370,9 +370,11 @@ The event envelope follows CloudEvents 1.0 in JSON format.
 | `acttype` | No | The type of the principal in `act`. Set it together with `act`. |
 | `traceparent` | No | W3C trace context, in the form `00-<32 hex>-<16 hex>-<2 hex>` with lowercase hex digits. |
 
-`act` and `acttype` go together. A producer sets both or neither. The schema cannot express this rule, so the events service rejects an event that has only one of them. The producer sets `actor`, `actortype`, `act`, and `acttype` from the verified principal of the request. It never sets them from request data. The outbox of `constellation-platform-go` does this. The outbox writer refuses an event that has only one of `act` and `acttype`.
+`act` and `acttype` go together. A producer sets both or neither. The schema cannot express this rule. The producer sets `actor`, `actortype`, `act`, and `acttype` from the verified principal of the request. It never sets them from request data. The outbox of `constellation-platform-go` does this. The outbox writer refuses an event that has only one of `act` and `acttype`.
 
 An event can have no request principal. Examples are an event of a timer, or an event of a consumer that reacts to another event. Then the producer sets `actor` to the client ID of the producer service and `actortype` to `service`. A consumer does not copy `actor` from the event that it reacts to.
+
+A CloudEvents extension name has only lowercase letters and digits, with a maximum of 20 characters.
 
 ## Event transport
 
@@ -386,15 +388,18 @@ An event can have no request principal. Examples are an event of a timer, or an 
 A service registers its event types with the events service (`PUT /v1/event-type-registrations/{app}`). The events service keeps the central event catalog. A client reads it with `GET /v1/event-types`.
 
 - The caller must be a service client. The token has `principal_type` `service` and the `app` claim. The `app` claim, `{app}`, and the body `app` must be equal. Else the events service gives 422 `registration_app_mismatch`.
+- The `aud` claim of the token must be the single value `events`. An array of audiences, even `["events"]`, gives 401. This stops the replay of a token that was issued for more than one audience.
 - The order of the checks is: 401, 403, 413, 422 `registration_app_mismatch`, then the content checks. The content checks give all errors in one 422.
 - `source` must be `/<app>`. Each `type` must start with `<app>.` and occur one time. `eventTypes` has 1 to 200 items. `description` has 1 to 1024 characters. `dataSchema` is a valid JSON Schema draft 2020-12 document with a maximum size of 64 KiB.
+- An app has a maximum of 1000 types in the catalog, removed types included. A registration above it gives 422 `limit_exceeded`.
+- Each `$ref` and `$dynamicRef` in `dataSchema` is local: its value starts with `#`. A `$id` is not set. The events service and the consumers must not fetch a remote schema. Else the events service gives 422 `invalid_data_schema`.
+- `dataSchema` has a maximum nesting depth of 32. A `$ref` must not make a loop. Each `pattern` and each key of `patternProperties` is in the RE2 subset, with no back reference and no look-around. Else the events service gives 422 `invalid_data_schema`.
+- The catalog text that a producer sends (`description` and `dataSchema`) is untrusted data. A consumer must escape it before it shows it. An agent or a UI must not treat it as instructions.
 - The body has a maximum size that the operator sets. The default is 4 MiB. A larger body gives 413 `content_too_large`.
 - The registration is a full replacement, and the last registration wins. A type that is not in the new body stays in the catalog with `removedAt`. A reader of the catalog must not use `removedAt` as a signal that no more events of the type come.
 - The same registration again changes nothing.
 - The outbox writer of a service refuses a type that is not in the registration of the service. It uses its own registration, not the catalog.
-- A change writes an audit entry with the action `events:event_type:register`.
-
-A CloudEvents extension name has only lowercase letters and digits, with a maximum of 20 characters.
+- A change writes an audit entry with the action `events:event_type:register`. The entry has the names of the added, removed, and changed types. A request that fails with 403 writes an entry with the result `denied`.
 
 ## Link templates
 
