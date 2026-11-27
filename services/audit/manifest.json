@@ -1,0 +1,19 @@
+{
+  "app": "audit",
+  "permissions": [
+    {
+      "key": "audit:log:read",
+      "description": "Search, read, and export audit entries."
+    }
+  ],
+  "defaultRoles": [
+    {
+      "key": "reader",
+      "name": "Reader",
+      "description": "Role that can search, read, and export audit entries.",
+      "permissions": [
+        "audit:log:read"
+      ]
+    }
+  ]
+}

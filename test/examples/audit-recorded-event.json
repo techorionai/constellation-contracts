@@ -1,0 +1,118 @@
+{
+  "valid": [
+    {
+      "specversion": "1.0",
+      "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+      "source": "/identity",
+      "type": "identity.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": {
+        "action": "identity:mfa:passkey_rename",
+        "result": "success",
+        "target": { "type": "passkey", "id": "pk_1" },
+        "summary": "Passkey renamed",
+        "details": { "oldName": "Laptop", "newName": "Work laptop" },
+        "requestId": "req-1",
+        "ipAddress": "2001:db8::1",
+        "userAgent": "Mozilla/5.0"
+      },
+      "actor": "usr_1",
+      "actortype": "user",
+      "traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+    },
+    {
+      "specversion": "1.0",
+      "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+      "source": "/helpdesk",
+      "type": "helpdesk.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": { "action": "helpdesk:ticket:write", "result": "denied" },
+      "actor": "usr_1",
+      "actortype": "user",
+      "act": "agt_1",
+      "acttype": "agent"
+    },
+    {
+      "specversion": "1.0",
+      "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a90",
+      "source": "/helpdesk",
+      "type": "helpdesk.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": { "action": "helpdesk:ticket:write", "result": "failure" },
+      "actor": "helpdesk",
+      "actortype": "service"
+    }
+  ],
+  "invalid": [
+    {
+      "specversion": "1.0",
+      "id": "e1",
+      "source": "/helpdesk",
+      "type": "helpdesk.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": { "result": "success" },
+      "actor": "usr_1",
+      "actortype": "user"
+    },
+    {
+      "specversion": "1.0",
+      "id": "e2",
+      "source": "/helpdesk",
+      "type": "helpdesk.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": { "action": "helpdesk:ticket:write", "result": "ok" },
+      "actor": "usr_1",
+      "actortype": "user"
+    },
+    {
+      "specversion": "1.0",
+      "id": "e3",
+      "source": "/helpdesk",
+      "type": "helpdesk.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": {
+        "action": "helpdesk:ticket:write",
+        "result": "success",
+        "summary": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "actor": "usr_1",
+      "actortype": "user"
+    },
+    {
+      "specversion": "1.0",
+      "id": "e4",
+      "source": "/helpdesk",
+      "type": "helpdesk.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": {
+        "action": "helpdesk:ticket:write",
+        "result": "success",
+        "target": { "type": "ticket" }
+      },
+      "actor": "usr_1",
+      "actortype": "user"
+    },
+    {
+      "specversion": "1.0",
+      "id": "e5",
+      "source": "/helpdesk",
+      "type": "helpdesk.audit.recorded",
+      "time": "2026-11-27T10:15:00Z",
+      "datacontenttype": "application/json",
+      "data": {
+        "action": "helpdesk:ticket:write",
+        "result": "success",
+        "ipAddress": "1111111111111111111111111111111111111111111111"
+      },
+      "actor": "usr_1",
+      "actortype": "user"
+    }
+  ]
+}

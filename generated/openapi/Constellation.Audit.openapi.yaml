@@ -1,0 +1,826 @@
+openapi: 3.0.0
+info:
+  title: Constellation Audit
+  description: |-
+    The audit service API. Clients search, read, and export audit entries.
+    Services write audit entries through their audit outbox and the Valkey streams `audit.stream:<app>`. They do not call this API.
+    The audience of the service is `audit`.
+    The permission manifest of the service is in `services/audit/manifest.json`.
+  version: 0.0.0
+tags: []
+paths:
+  /v1/audit-entries:
+    get:
+      operationId: AuditEntries_list
+      description: |-
+        Search audit entries. The order is `time` descending, then the internal key of the service descending.
+        The order of entries with the same `time` is stable, but a client must not use it.
+        `from` is inclusive and `to` is exclusive. `from` must be before `to`. Else 400 `invalid_parameter`.
+        `targetId` needs `targetType`. Else 400 `invalid_parameter`.
+        A filter value that breaks its rule gives 400 `invalid_parameter`.
+        A bad page token, or a token that was made with other filters, gives 400 `invalid_page_token`.
+        A page ends at 1 MiB of response body, with a minimum of one item.
+        The first page of each search (a request with no `pageToken`) writes an audit entry with the action `audit:log:search` and the filters. Later pages write no entry.
+        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        A limited request gives 429 `rate_limited` with the required `Retry-After`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - $ref: '#/components/parameters/CursorPageParams.pageToken'
+        - $ref: '#/components/parameters/CursorPageParams.pageSize'
+        - $ref: '#/components/parameters/AuditEntryFilters.from'
+        - $ref: '#/components/parameters/AuditEntryFilters.to'
+        - $ref: '#/components/parameters/AuditEntryFilters.service'
+        - $ref: '#/components/parameters/AuditEntryFilters.action'
+        - $ref: '#/components/parameters/AuditEntryFilters.result'
+        - $ref: '#/components/parameters/AuditEntryFilters.actor'
+        - $ref: '#/components/parameters/AuditEntryFilters.actorType'
+        - $ref: '#/components/parameters/AuditEntryFilters.act'
+        - $ref: '#/components/parameters/AuditEntryFilters.targetType'
+        - $ref: '#/components/parameters/AuditEntryFilters.targetId'
+        - $ref: '#/components/parameters/AuditEntryFilters.requestId'
+        - $ref: '#/components/parameters/AuditEntryFilters.traceId'
+      responses:
+        '200':
+          description: A page response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEntryPage'
+        '400':
+          description: The request is not valid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: The request has no valid credentials.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+        '403':
+          description: The principal does not have the permission.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+        '429':
+          description: The client sent too many requests.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TooManyRequests'
+        '500':
+          description: The server has an internal error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+        '503':
+          description: The service is not available.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailable'
+      x-required-scopes:
+        - audit:log:read
+  /v1/audit-entries/export:
+    get:
+      operationId: AuditEntries_export
+      description: |-
+        Export audit entries with the same filters as the search. `format` is required: `csv` or `json`.
+        The response is one document. `csv` gives `text/csv` (RFC 4180, with a header row). `json` gives `application/json`: one JSON array of `AuditEntry`.
+        The CSV columns, in this order: `id`, `service`, `time`, `receivedAt`, `action`, `result`, `actor`, `actorType`, `act`, `actType`,
+        `targetType`, `targetId`, `summary`, `requestId`, `traceId`, `ipAddress`, `userAgent`, `details` (JSON text).
+        Each CSV field is in double quotes, and a `"` in a field becomes `""`. A field that starts with `=`, `+`, `-`, `@`, a tab, a carriage return, or a line feed gets a `'` in front. This rule applies to all columns.
+        Producers must remove or escape control characters and bidirectional control characters in free text, for example `summary`, `requestId`, and `userAgent`.
+        The order of the entries is the order of the search.
+        An export has a maximum count of entries that the operator sets. The default is 100000.
+        An export also has a maximum size in bytes that the operator sets. The default is 256 MiB. The service must stream the body and must not keep the full export in memory.
+        More entries than the count limit give 422 `export_too_large` before the first byte. An export that reaches the byte limit while the service streams stops, and the service closes the connection with an error. The client must not use a partial export.
+        Each instance runs a maximum of 2 exports at the same time, and each principal runs a maximum of 1 export at the same time. An export above a limit gives 429 `too_many_exports` with the required `Retry-After`. The 429 body is a `TooManyExports` problem.
+        `Content-Disposition` is `attachment; filename="audit-entries-<UTC time in the form 20261127T101500Z>.<csv or json>"`. `X-Content-Type-Options` is `nosniff`.
+        The route `/v1/audit-entries/export` has precedence over `/v1/audit-entries/{id}`. The value `export` is never an entry ID.
+        Each export writes an audit entry with the action `audit:log:export`, the format, the filters, and the count.
+        The filter rules and the error codes of the search apply. `invalid_parameter` is the code of 400.
+        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: format
+          in: query
+          required: true
+          description: Format of the export.
+          schema:
+            $ref: '#/components/schemas/AuditExportFormat'
+          explode: false
+        - $ref: '#/components/parameters/AuditEntryFilters.from'
+        - $ref: '#/components/parameters/AuditEntryFilters.to'
+        - $ref: '#/components/parameters/AuditEntryFilters.service'
+        - $ref: '#/components/parameters/AuditEntryFilters.action'
+        - $ref: '#/components/parameters/AuditEntryFilters.result'
+        - $ref: '#/components/parameters/AuditEntryFilters.actor'
+        - $ref: '#/components/parameters/AuditEntryFilters.actorType'
+        - $ref: '#/components/parameters/AuditEntryFilters.act'
+        - $ref: '#/components/parameters/AuditEntryFilters.targetType'
+        - $ref: '#/components/parameters/AuditEntryFilters.targetId'
+        - $ref: '#/components/parameters/AuditEntryFilters.requestId'
+        - $ref: '#/components/parameters/AuditEntryFilters.traceId'
+      responses:
+        '200':
+          description: An export of audit entries as CSV or JSON. CSV follows RFC 4180, with a header row. JSON is one array.
+          headers:
+            Content-Disposition:
+              required: true
+              description: Name of the file. The value is `attachment; filename="audit-entries-<UTC time>.<csv or json>"`.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              required: true
+              description: The browser must not guess the media type.
+              schema:
+                type: string
+                enum:
+                  - nosniff
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEntry'
+        '400':
+          description: The request is not valid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: The request has no valid credentials.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+        '403':
+          description: The principal does not have the permission.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+        '422':
+          description: The request is well formed, but the server cannot process its content.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableContent'
+        '429':
+          description: The export limit of the principal or of the instance is reached. The code is `too_many_exports`.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next export.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TooManyExports'
+        '500':
+          description: The server has an internal error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+        '503':
+          description: The service is not available.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailable'
+      x-required-scopes:
+        - audit:log:read
+  /v1/audit-entries/{id}:
+    get:
+      operationId: AuditEntries_get
+      description: |-
+        Get one audit entry. `id` is a UUID in text form.
+        A value that is not a UUID gives 400 `invalid_parameter`. An unknown ID gives 404 `audit_entry_not_found`.
+        The value `export` is not an ID. The route `/v1/audit-entries/export` has precedence over this route.
+        Two services can use the same ID. `id` with `service` is the unique key.
+        With `service`, the operation returns the entry of that service, or 404.
+        Without `service`, it returns the entry with the oldest `receivedAt`.
+        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        A limited request gives 429 `rate_limited` with the required `Retry-After`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the entry.
+          schema:
+            type: string
+            format: uuid
+        - name: service
+          in: query
+          required: false
+          description: The service of the entry.
+          schema:
+            $ref: '#/components/schemas/AppKey'
+          explode: false
+      responses:
+        '200':
+          description: An audit entry response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEntry'
+        '400':
+          description: The request is not valid.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+        '401':
+          description: The request has no valid credentials.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+        '403':
+          description: The principal does not have the permission.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+        '404':
+          description: The resource does not exist.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+        '429':
+          description: The client sent too many requests.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TooManyRequests'
+        '500':
+          description: The server has an internal error.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/InternalServerError'
+        '503':
+          description: The service is not available.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ServiceUnavailable'
+      x-required-scopes:
+        - audit:log:read
+security:
+  - BearerAuth: []
+components:
+  parameters:
+    AuditEntryFilters.act:
+      name: act
+      in: query
+      required: false
+      description: Return only the entries with this `act`.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+      explode: false
+    AuditEntryFilters.action:
+      name: action
+      in: query
+      required: false
+      description: Return only this action.
+      schema:
+        $ref: '#/components/schemas/PermissionKey'
+      explode: false
+    AuditEntryFilters.actor:
+      name: actor
+      in: query
+      required: false
+      description: Return only the entries of this actor.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+      explode: false
+    AuditEntryFilters.actorType:
+      name: actorType
+      in: query
+      required: false
+      description: Return only the entries of this actor type.
+      schema:
+        $ref: '#/components/schemas/PrincipalType'
+      explode: false
+    AuditEntryFilters.from:
+      name: from
+      in: query
+      required: false
+      description: Start of the time range. Inclusive.
+      schema:
+        type: string
+        format: date-time
+      explode: false
+    AuditEntryFilters.requestId:
+      name: requestId
+      in: query
+      required: false
+      description: Return only the entries with this request ID.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+      explode: false
+    AuditEntryFilters.result:
+      name: result
+      in: query
+      required: false
+      description: Return only this result.
+      schema:
+        $ref: '#/components/schemas/AuditResult'
+      explode: false
+    AuditEntryFilters.service:
+      name: service
+      in: query
+      required: false
+      description: Return only the entries of this service.
+      schema:
+        $ref: '#/components/schemas/AppKey'
+      explode: false
+    AuditEntryFilters.targetId:
+      name: targetId
+      in: query
+      required: false
+      description: Return only the entries with this target ID. It needs `targetType`.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 256
+      explode: false
+    AuditEntryFilters.targetType:
+      name: targetType
+      in: query
+      required: false
+      description: Return only the entries with this target type.
+      schema:
+        $ref: '#/components/schemas/AuditTargetType'
+      explode: false
+    AuditEntryFilters.to:
+      name: to
+      in: query
+      required: false
+      description: End of the time range. Exclusive. `from` must be before `to`.
+      schema:
+        type: string
+        format: date-time
+      explode: false
+    AuditEntryFilters.traceId:
+      name: traceId
+      in: query
+      required: false
+      description: Return only the entries with this trace ID. 32 lowercase hex characters.
+      schema:
+        type: string
+        pattern: ^[0-9a-f]{32}$
+      explode: false
+    CursorPageParams.pageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Maximum number of items in the page.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 200
+        default: 50
+      explode: false
+    CursorPageParams.pageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: Opaque token from `nextPageToken` of the previous page.
+      schema:
+        type: string
+        maxLength: 1024
+      explode: false
+  schemas:
+    AppKey:
+      type: string
+      maxLength: 32
+      pattern: ^[a-z][a-z0-9_]*$
+      description: Key of an application, for example `helpdesk` or `customer_portal`.
+    AuditEntry:
+      type: object
+      required:
+        - id
+        - service
+        - time
+        - receivedAt
+        - action
+        - result
+        - actor
+        - actorType
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 'ID of the entry: the CloudEvent `id`. A UUID in lowercase text form.'
+        service:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: Key of the app that wrote the entry. It comes from `source`.
+        time:
+          type: string
+          format: date-time
+          description: Time of the action.
+        receivedAt:
+          type: string
+          format: date-time
+          description: Time at which the audit service stored the entry.
+        action:
+          allOf:
+            - $ref: '#/components/schemas/PermissionKey'
+          description: The action.
+        result:
+          allOf:
+            - $ref: '#/components/schemas/AuditResult'
+          description: Result of the action.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: The ID of the principal that did the action.
+        actorType:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: The agent that acted for the user, or the proposer of an action that a user approved.
+        actType:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`.
+        target:
+          allOf:
+            - $ref: '#/components/schemas/AuditTarget'
+          description: The resource that the action acted on.
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: Short text for a person.
+        details:
+          type: object
+          additionalProperties: {}
+          description: Details of the action.
+        requestId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: The `X-Request-ID` of the request.
+        traceId:
+          type: string
+          pattern: ^[0-9a-f]{32}$
+          description: ID of the trace, from `traceparent`. 32 lowercase hex characters.
+        ipAddress:
+          type: string
+          maxLength: 45
+          description: IP address of the client.
+        userAgent:
+          type: string
+          maxLength: 512
+          description: The `User-Agent` of the request.
+      description: One audit entry in the audit service. The service and `id` together are the unique key.
+    AuditEntryPage:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntry'
+          description: Items of the page.
+        nextPageToken:
+          type: string
+          description: Token for the next page. No value means that this is the last page.
+      description: One page of audit entries.
+    AuditExportFormat:
+      type: string
+      enum:
+        - csv
+        - json
+      description: The export format.
+    AuditResult:
+      type: string
+      enum:
+        - success
+        - denied
+        - invalid
+        - failure
+      description: Result of an audited action.
+    AuditTarget:
+      type: object
+      required:
+        - type
+        - id
+      properties:
+        type:
+          allOf:
+            - $ref: '#/components/schemas/AuditTargetType'
+          description: Type of the resource.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource.
+      description: The resource that an audited action acted on.
+    AuditTargetType:
+      type: string
+      pattern: ^[a-z][a-z0-9_]{0,63}$
+      description: Type of the target of an audited action, for example `ticket`.
+    BadRequest:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request is not valid.
+    Conflict:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request conflicts with the state of the resource.
+    ContentTooLarge:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: |-
+        The request body is larger than the limit of the service. The code is `content_too_large`.
+        The operator of the service sets the limit.
+    FieldError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: JSON Pointer to the incorrect value.
+        code:
+          type: string
+          description: Stable code that a machine can read.
+        message:
+          type: string
+          description: Message for a person.
+      description: One incorrect field of a request.
+    Forbidden:
+      type: object
+      properties:
+        missingScopes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionKey'
+          description: Permissions that the principal lacks. An agent uses them to ask the user for approval.
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The principal does not have the permission.
+    InternalServerError:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The server has an internal error.
+    NotFound:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The resource does not exist.
+    PermissionKey:
+      type: string
+      maxLength: 128
+      pattern: ^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$
+      description: |-
+        Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+        The only exception is `identity:admin`, the permission of full administration of the identity service.
+    PrincipalType:
+      type: string
+      enum:
+        - user
+        - agent
+        - service
+        - workflow
+      description: Type of a principal.
+    Problem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: Problem details for an HTTP API (RFC 9457).
+    ReauthenticationRequired:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: |-
+        The token does not show a fresh login or a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
+        A fresh login needs `auth_time` at most 5 minutes old. A fresh MFA login also needs `mfa` in `amr`.
+        The client must start a new authorization request with `max_age`. A token refresh does not help.
+        The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
+        An operation that uses this model always sends the header with the code `reauthentication_required`.
+    ServiceUnavailable:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The service is not available.
+    TooManyExports:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The export limit of the principal or of the instance is reached. The code is `too_many_exports`.
+    TooManyRequests:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The client sent too many requests.
+    Unauthorized:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request has no valid credentials.
+    UnprocessableContent:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+      description: The request is well formed, but the server cannot process its content.
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: Bearer

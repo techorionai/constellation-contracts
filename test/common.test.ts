@@ -45,6 +45,11 @@ describe("root project", () => {
       "RoleDefinition",
       "EventTypeRegistration",
       "EventTypeDefinition",
+      "AuditEntryData",
+      "AuditTarget",
+      "AuditResult",
+      "AuditTargetType",
+      "AuditRecordedEvent",
     ]) {
       expect(names).toContain(name);
     }

@@ -267,6 +267,7 @@ A consumer copies files from a release tag. A TypeSpec constant is not in the ge
 | `LinkTemplate`, `LinkTemplateSet`, `ResourceType` | `lib/links.tsp` | An application maps resource types to URLs. |
 | `PermissionManifest`, `PermissionDefinition`, `RoleDefinition`, `AppKey`, `PermissionKey`, `RoleKey` | `lib/permissions.tsp` | A service publishes its permissions and default roles. |
 | `EventTypeRegistration`, `EventTypeDefinition` | `lib/event-types.tsp` | A service registers its event types with the events service. |
+| `AuditEntryData`, `AuditTarget`, `AuditTargetType`, `AuditResult`, `AuditRecordedEvent` | `lib/audit.tsp` | A service writes an audit entry, or the audit service reads one. |
 | `AccessTokenClaims`, `ActorClaim`, `ScopeString`, `RequestScopeString`, `RoleRef`, `AppKeyList` | `lib/auth.tsp` | A service or a client reads or checks an access token, a scope list, or a role reference. |
 
 Do not use visibility decorators in the shared models. Then each model has one schema name.
@@ -314,6 +315,7 @@ An error response has the content type `application/problem+json`. The body is a
 - `ServiceUnavailable` can have the optional `Retry-After` header.
 - `ContentTooLarge` has the code `content_too_large`. The operator of the service sets the body limit.
 - A server can reject an expired or incorrect page token with `BadRequest` and the code `invalid_page_token`.
+- A server rejects a query parameter that breaks its rule with `BadRequest` and the code `invalid_parameter`.
 
 Rules for the content of an error:
 
@@ -328,6 +330,7 @@ Rules for the content of an error:
 - `Retry-After` is an integer number of seconds (RFC 9110 delay-seconds). The identity service sends a value of 1 or more. A client accepts 0 and treats it as 1.
 - A client must not try again before `Retry-After`.
 - A new public operation must declare 429.
+- A concurrency limit of one operation can use its own `Problem` code, for example `too_many_exports`. It has the required `Retry-After` and the other rules of this section.
 - The 429 or 503 status, the body (`detail`, `error_description`), and `Retry-After` do not change when a `client_id` or a user exists or does not exist. The response does not give the limit key, the limit value, or the remaining requests.
 
 ## Pagination
@@ -336,6 +339,22 @@ Rules for the content of an error:
 - `pageToken` is an opaque token with a maximum of 1024 characters. A client must not parse it.
 - `pageSize` is from 1 to 200. The default is 50. The list of registrations is an exception: its `pageSize` is from 1 to 10, and the default is 10.
 - `nextPageToken` has no value on the last page.
+
+## Time range filters
+
+- A list operation with a time range uses the query parameters `from` and `to`, both `utcDateTime`.
+- `from` is inclusive and `to` is exclusive. Two ranges then join with no gap and no overlap.
+- `from` must be before `to`. Else the service gives 400 `invalid_parameter`.
+
+## CSV responses
+
+- A CSV operation has an inline string body with the content type `text/csv` (RFC 4180, with a header row).
+- The doc comment of the operation gives the column order.
+- A cell that starts with `=`, `+`, `-`, `@`, a tab, or a carriage return gets a `'` in front. This stops formula injection in a spreadsheet.
+- Each field is in double quotes, and a `"` in a field becomes `""`.
+- A field that starts with `=`, `+`, `-`, `@`, a tab, a carriage return, or a line feed gets a `'` in front. The rule applies to all columns. This stops formula injection in a spreadsheet.
+- Producers must remove or escape control characters and bidirectional control characters in free text.
+- The operation sets `Content-Disposition` to an `attachment` value and `X-Content-Type-Options` to `nosniff`. The response models declare both headers, and the generated file shows them.
 
 ## Keys and limits
 
@@ -400,6 +419,25 @@ A service registers its event types with the events service (`PUT /v1/event-type
 - The same registration again changes nothing.
 - The outbox writer of a service refuses a type that is not in the registration of the service. It uses its own registration, not the catalog.
 - A change writes an audit entry with the action `events:event_type:register`. The entry has the names of the added, removed, and changed types. A request that fails with 403 writes an entry with the result `denied`.
+
+## Audit entries
+
+An audit entry is a CloudEvent with the data model `AuditEntryData` of `lib/audit.tsp`.
+
+- A service writes the entry in the same database transaction as the change. The audit outbox of `constellation-platform-go` does this.
+- The relay adds the entry to the Valkey stream `audit.stream:<app>`. Each stream entry has one field `event` with the CloudEvent in JSON. Only the audit service reads audit streams. A service writes only to its own audit stream.
+- `source` is `/<app>`. `type` is `<app>.audit.recorded`. The type is not in the event catalog.
+- `id` is a UUID in lowercase text form. UUIDv7 is recommended. The audit service removes duplicates by `source` and `id`. The schema of the shared `CloudEvent` does not express the UUID rule. The writer and the audit intake check it.
+- `action` has the `PermissionKey` form and starts with `<app>:`. It does not have to be a key of the manifest.
+- The audit service gets the app from the stream key `audit.stream:<app>`. The intake refuses an entry if `source` is not `/<app>`, if `type` is not `<app>.audit.recorded`, if `data.action` does not start with `<app>:`, if `id` is not a UUID, if only one of `act` and `acttype` is set, or if `ipAddress` is not a valid IPv4 or IPv6 address. The service of the stored entry is the app of the stream key.
+- `result` is `success`, `denied`, `invalid`, or `failure`.
+- `actor`, `actortype`, `act`, and `acttype` come from the verified principal of the request. `act` is the agent for an action of an agent for a user. It is the proposer for an action that a user approved.
+- Limits: `summary` has 1 to 1024 characters. `details` has a maximum of 16 KiB in JSON. `requestId` has a maximum of 128 characters. `ipAddress` has a maximum of 45 characters and is a valid IPv4 or IPv6 address with no port and no zone. `userAgent` has a maximum of 512 characters. The full CloudEvent has a maximum of 64 KiB.
+- `summary` and `details` contain no secret, no token, and no password.
+- The first page of each search writes an audit entry with the action `audit:log:search`. Each export writes an entry with the action `audit:log:export`.
+- An export has a count limit and a byte limit that the operator sets. The service streams the body. An export above a limit stops. Each principal can run 1 export at the same time.
+- A reader ignores an unknown member of `data` and of the envelope. It does not refuse the entry for this reason. Then a new optional field is a MINOR change.
+- The audit service API (`GET /v1/audit-entries`, `GET /v1/audit-entries/{id}`, `GET /v1/audit-entries/export`) needs the permission `audit:log:read`. Its responses have `Cache-Control: no-store` and `Pragma: no-cache`.
 
 ## Link templates
 
