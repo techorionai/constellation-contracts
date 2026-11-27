@@ -10,8 +10,9 @@ This repository makes OpenAPI files only. It does not make Go code. Each consume
 | ---- | ------- |
 | `Constellation.Common.openapi.yaml` | The shared models only. It has no paths. |
 | `Constellation.<Service>.openapi.yaml` | The routes of the service, and the shared models that the service uses. |
-| `services/<service>/manifest.json` | The permission manifest of a service, if the service has a fixed manifest. Examples: `services/identity/manifest.json` and `services/events/manifest.json`. A consumer copies it from the same tag as the OpenAPI file. |
+| `services/<service>/manifest.json` | The permission manifest of a service, if the service has a fixed manifest. Examples: `services/identity/manifest.json` and `services/events/manifest.json`, and `services/audit/manifest.json`. A consumer copies it from the same tag as the OpenAPI file. |
 | `Constellation.Events.openapi.yaml` | The events service: event type registration and the event catalog. The consumers are `constellation-platform-go` and `constellation-events`. |
+| `Constellation.Audit.openapi.yaml` | The audit service: search, read, and export audit entries. The consumers are `constellation-platform-go` and `constellation-audit`. `constellation-platform-go` uses the shared audit model of `Constellation.Common.openapi.yaml`. |
 
 Each service file is complete. A consumer needs only the file of its service. It does not need `Constellation.Common.openapi.yaml`.
 

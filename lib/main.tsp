@@ -6,3 +6,4 @@ import "./links.tsp";
 import "./event-types.tsp";
 import "./common.tsp";
 import "./auth.tsp";
+import "./audit.tsp";
