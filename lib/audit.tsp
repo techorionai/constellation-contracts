@@ -56,7 +56,7 @@ model AuditEntryData {
   @maxLength(128)
   requestId?: string;
 
-  /** IP address of the client. A valid IPv4 or IPv6 address in text form, with no port and no zone. A reader refuses another value. */
+  /** IP address of the client. An IPv4 or IPv6 address in text form, with no port and no zone. The schema checks only the length. The audit intake checks the address and refuses another value. */
   @minLength(1)
   @maxLength(45)
   ipAddress?: string;
@@ -81,6 +81,10 @@ model AuditEntryData {
  * 6. Only the audit service reads audit streams. A service writes only to its own audit stream.
  * 7. The full CloudEvent has a maximum of 64 KiB.
  * 8. A reader ignores an unknown member of `data` and of the envelope. It does not refuse the entry for this reason.
+ * 9. The audit intake gets the app from the stream key `audit.stream:<app>`. It does not use the app of the entry.
+ *    The intake refuses an entry if `source` is not `/<app>`, if `type` is not `<app>.audit.recorded`, if `data.action` does not start with `<app>:`,
+ *    if `id` is not a UUID in lowercase text form, if `act` and `acttype` are not both set or both not set, or if `data.ipAddress` is not a valid IPv4 or IPv6 address.
+ *    The service of the stored entry is always `<app>` of the stream key.
  */
 @friendlyName("AuditRecordedEvent")
 model AuditRecordedEvent is CloudEvent<AuditEntryData>;

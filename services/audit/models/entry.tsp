@@ -27,12 +27,16 @@ model AuditEntry {
   result: AuditResult;
 
   /** The ID of the principal that did the action. */
+  @minLength(1)
+  @maxLength(128)
   actor: string;
 
   /** Type of the principal in `actor`. */
   actorType: PrincipalType;
 
   /** The agent that acted for the user, or the proposer of an action that a user approved. */
+  @minLength(1)
+  @maxLength(128)
   act?: string;
 
   /** Type of the principal in `act`. */
@@ -42,12 +46,16 @@ model AuditEntry {
   target?: AuditTarget;
 
   /** Short text for a person. */
+  @minLength(1)
+  @maxLength(1024)
   summary?: string;
 
   /** Details of the action. */
   details?: Record<unknown>;
 
   /** The `X-Request-ID` of the request. */
+  @minLength(1)
+  @maxLength(128)
   requestId?: string;
 
   /** ID of the trace, from `traceparent`. 32 lowercase hex characters. */

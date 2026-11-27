@@ -8,16 +8,30 @@ namespace Constellation.Audit;
  * Response headers for a response that has personal data, for example an IP address or a user agent.
  * A cache must not keep the response.
  */
-@friendlyName("AuditNoStoreHeaders")
-model AuditNoStoreHeaders {
+alias AuditNoStoreHeaders = {
   /** Cache rule. */
   @header("Cache-Control") cacheControl: "no-store";
 
   /** Cache rule for old HTTP/1.0 caches. */
   @header("Pragma") pragma: "no-cache";
+};
+
+/** The export limit of the principal or of the instance is reached. The code is `too_many_exports`. */
+@error
+@friendlyName("TooManyExports")
+model TooManyExports {
+  ...Constellation.Common.Problem;
+
+  /** Status of the response. */
+  @statusCode statusCode: 429;
+
+  /** Seconds to wait before the next export. */
+  @minValue(0)
+  @header("Retry-After")
+  retryAfter: int32;
 }
 
-/** An export of audit entries as CSV (RFC 4180, with a header row). */
+/** An export of audit entries as CSV or JSON. CSV follows RFC 4180, with a header row. JSON is one array. */
 @friendlyName("AuditCsvExport")
 model AuditCsvExport {
   /** Media type of the response. */
@@ -26,13 +40,19 @@ model AuditCsvExport {
   /** Status of the response. */
   @statusCode statusCode: 200;
 
+  /** Name of the file. The value is `attachment; filename="audit-entries-<UTC time>.<csv or json>"`. */
+  @header("Content-Disposition") contentDisposition: string;
+
+  /** The browser must not guess the media type. */
+  @header("X-Content-Type-Options") contentTypeOptions: "nosniff";
+
   ...AuditNoStoreHeaders;
 
   /** The CSV text. */
   @body body: string;
 }
 
-/** An export of audit entries as one JSON array. */
+/** An export of audit entries as CSV or JSON. CSV follows RFC 4180, with a header row. JSON is one array. */
 @friendlyName("AuditJsonExport")
 model AuditJsonExport {
   /** Media type of the response. */
@@ -40,6 +60,12 @@ model AuditJsonExport {
 
   /** Status of the response. */
   @statusCode statusCode: 200;
+
+  /** Name of the file. The value is `attachment; filename="audit-entries-<UTC time>.<csv or json>"`. */
+  @header("Content-Disposition") contentDisposition: string;
+
+  /** The browser must not guess the media type. */
+  @header("X-Content-Type-Options") contentTypeOptions: "nosniff";
 
   ...AuditNoStoreHeaders;
 

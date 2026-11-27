@@ -45,8 +45,8 @@ const filters: [string, string][] = [
 
 /** Operation ID, method, path, success statuses, and error statuses. */
 const expected: [string, string, string, number[]][] = [
-  ["AuditEntries_list", "get", "/v1/audit-entries", []],
-  ["AuditEntries_get", "get", "/v1/audit-entries/{id}", [404]],
+  ["AuditEntries_list", "get", "/v1/audit-entries", [429]],
+  ["AuditEntries_get", "get", "/v1/audit-entries/{id}", [404, 429]],
   ["AuditEntries_export", "get", "/v1/audit-entries/export", [422, 429]],
 ];
 
@@ -156,6 +156,13 @@ describe("audit service contract", () => {
       "application/json",
       "text/csv",
     ]);
+    expect(ok("AuditEntries_export")).toBeDefined();
+    expect(byId["AuditEntries_export"].op.responses["200"].description).toContain(
+      "CSV or JSON",
+    );
+    expect(Object.keys(doc.components.schemas)).not.toContain(
+      "AuditNoStoreHeaders",
+    );
     expect(exported["text/csv"].schema).toEqual({ type: "string" });
     expect(exported["application/json"].schema).toEqual({
       type: "array",
@@ -183,6 +190,11 @@ describe("audit service contract", () => {
       expect(headers["Cache-Control"].schema.enum, o.id).toEqual(["no-store"]);
       expect(headers["Pragma"].schema.enum, o.id).toEqual(["no-cache"]);
     }
+    const exportHeaders = byId["AuditEntries_export"].op.responses["200"].headers;
+    expect(Object.keys(exportHeaders)).toContain("Content-Disposition");
+    expect(exportHeaders["X-Content-Type-Options"].schema.enum).toEqual([
+      "nosniff",
+    ]);
   });
 
   // U135
@@ -229,7 +241,13 @@ describe("audit service contract", () => {
       "unavailable",
       "`id`, `service`, `time`, `receivedAt`, `action`, `result`, `actor`, `actorType`, `act`, `actType`",
       "`targetType`, `targetId`, `summary`, `requestId`, `traceId`, `ipAddress`, `userAgent`, `details`",
-      "starts with `=`, `+`, `-`, `@`, a tab, or a carriage return gets a `'` in front",
+      "starts with `=`, `+`, `-`, `@`, a tab, a carriage return, or a line feed gets a `'` in front",
+      "becomes `\"\"`",
+      "maximum size in bytes",
+      "must stream the body",
+      "audit:log:search",
+      "has precedence over",
+      "gives 400 `invalid_parameter`",
       "audit:log:export",
     ]) {
       expect(text, word).toContain(word);
@@ -237,6 +255,8 @@ describe("audit service contract", () => {
     const event: string =
       common.components.schemas.AuditRecordedEvent.description;
     for (const word of [
+      "audit.stream:<app>",
+      "the intake refuses an entry".replace("the", "The"),
       ".audit.recorded",
       "`/<app>`",
       "UUID in lowercase text form",
@@ -282,6 +302,17 @@ describe("audit service contract", () => {
         .sort();
       expect(statuses, id).toEqual([...commonErrors, ...extra].sort());
     }
+    expect(
+      byId["AuditEntries_export"].op.responses["429"].content[
+        "application/problem+json"
+      ].schema,
+    ).toEqual({ $ref: "#/components/schemas/TooManyExports" });
+    expect(Object.keys(doc.components.schemas)).toContain("TooManyExports");
+    const entry = doc.components.schemas.AuditEntry.properties;
+    expect(entry.summary.maxLength).toBe(1024);
+    expect(entry.requestId.maxLength).toBe(128);
+    expect(entry.act.maxLength).toBe(128);
+    expect(entry.actor.maxLength).toBe(128);
     const header = byId["AuditEntries_export"].op.responses["429"].headers[
       "Retry-After"
     ];

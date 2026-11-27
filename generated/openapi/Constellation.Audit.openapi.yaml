@@ -20,7 +20,9 @@ paths:
         A filter value that breaks its rule gives 400 `invalid_parameter`.
         A bad page token, or a token that was made with other filters, gives 400 `invalid_page_token`.
         A page ends at 1 MiB of response body, with a minimum of one item.
+        The first page of each search (a request with no `pageToken`) writes an audit entry with the action `audit:log:search` and the filters. Later pages write no entry.
         The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        A limited request gives 429 `rate_limited` with the required `Retry-After`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - $ref: '#/components/parameters/CursorPageParams.pageToken'
@@ -77,6 +79,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Forbidden'
+        '429':
+          description: The client sent too many requests.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TooManyRequests'
         '500':
           description: The server has an internal error.
           content:
@@ -107,12 +123,15 @@ paths:
         The response is one document. `csv` gives `text/csv` (RFC 4180, with a header row). `json` gives `application/json`: one JSON array of `AuditEntry`.
         The CSV columns, in this order: `id`, `service`, `time`, `receivedAt`, `action`, `result`, `actor`, `actorType`, `act`, `actType`,
         `targetType`, `targetId`, `summary`, `requestId`, `traceId`, `ipAddress`, `userAgent`, `details` (JSON text).
-        A CSV cell that starts with `=`, `+`, `-`, `@`, a tab, or a carriage return gets a `'` in front.
+        Each CSV field is in double quotes, and a `"` in a field becomes `""`. A field that starts with `=`, `+`, `-`, `@`, a tab, a carriage return, or a line feed gets a `'` in front. This rule applies to all columns.
+        Producers must remove or escape control characters and bidirectional control characters in free text, for example `summary`, `requestId`, and `userAgent`.
         The order of the entries is the order of the search.
         An export has a maximum count of entries that the operator sets. The default is 100000.
-        More entries give 422 `export_too_large` before the first byte.
-        Each instance runs a maximum of 2 exports at the same time. A third export gives 429 `too_many_exports` with the required `Retry-After`. The 429 body is a `TooManyRequests` problem.
-        `Content-Disposition` is `attachment; filename="audit-entries-<UTC time in the form 20261127T101500Z>.<csv or json>"`.
+        An export also has a maximum size in bytes that the operator sets. The default is 256 MiB. The service must stream the body and must not keep the full export in memory.
+        More entries than the count limit give 422 `export_too_large` before the first byte. An export that reaches the byte limit while the service streams stops, and the service closes the connection with an error. The client must not use a partial export.
+        Each instance runs a maximum of 2 exports at the same time, and each principal runs a maximum of 1 export at the same time. An export above a limit gives 429 `too_many_exports` with the required `Retry-After`. The 429 body is a `TooManyExports` problem.
+        `Content-Disposition` is `attachment; filename="audit-entries-<UTC time in the form 20261127T101500Z>.<csv or json>"`. `X-Content-Type-Options` is `nosniff`.
+        The route `/v1/audit-entries/export` has precedence over `/v1/audit-entries/{id}`. The value `export` is never an entry ID.
         Each export writes an audit entry with the action `audit:log:export`, the format, the filters, and the count.
         The filter rules and the error codes of the search apply. `invalid_parameter` is the code of 400.
         The response has `Cache-Control: no-store` and `Pragma: no-cache`.
@@ -139,8 +158,20 @@ paths:
         - $ref: '#/components/parameters/AuditEntryFilters.traceId'
       responses:
         '200':
-          description: An export of audit entries as CSV (RFC 4180, with a header row).
+          description: An export of audit entries as CSV or JSON. CSV follows RFC 4180, with a header row. JSON is one array.
           headers:
+            Content-Disposition:
+              required: true
+              description: Name of the file. The value is `attachment; filename="audit-entries-<UTC time>.<csv or json>"`.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              required: true
+              description: The browser must not guess the media type.
+              schema:
+                type: string
+                enum:
+                  - nosniff
             Cache-Control:
               required: true
               description: Cache rule.
@@ -189,11 +220,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/UnprocessableContent'
         '429':
-          description: The client sent too many requests.
+          description: The export limit of the principal or of the instance is reached. The code is `too_many_exports`.
           headers:
             Retry-After:
               required: true
-              description: Seconds to wait before the next request.
+              description: Seconds to wait before the next export.
               schema:
                 type: integer
                 format: int32
@@ -201,7 +232,7 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/TooManyRequests'
+                $ref: '#/components/schemas/TooManyExports'
         '500':
           description: The server has an internal error.
           content:
@@ -229,11 +260,13 @@ paths:
       operationId: AuditEntries_get
       description: |-
         Get one audit entry. `id` is a UUID in text form.
-        A value that is not a UUID, or an unknown ID, gives 404 `audit_entry_not_found`.
+        A value that is not a UUID gives 400 `invalid_parameter`. An unknown ID gives 404 `audit_entry_not_found`.
+        The value `export` is not an ID. The route `/v1/audit-entries/export` has precedence over this route.
         Two services can use the same ID. `id` with `service` is the unique key.
         With `service`, the operation returns the entry of that service, or 404.
         Without `service`, it returns the entry with the oldest `receivedAt`.
         The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        A limited request gives 429 `rate_limited` with the required `Retry-After`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - name: id
@@ -296,6 +329,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/NotFound'
+        '429':
+          description: The client sent too many requests.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/TooManyRequests'
         '500':
           description: The server has an internal error.
           content:
@@ -494,6 +541,8 @@ components:
           description: Result of the action.
         actor:
           type: string
+          minLength: 1
+          maxLength: 128
           description: The ID of the principal that did the action.
         actorType:
           allOf:
@@ -501,6 +550,8 @@ components:
           description: Type of the principal in `actor`.
         act:
           type: string
+          minLength: 1
+          maxLength: 128
           description: The agent that acted for the user, or the proposer of an action that a user approved.
         actType:
           allOf:
@@ -512,6 +563,8 @@ components:
           description: The resource that the action acted on.
         summary:
           type: string
+          minLength: 1
+          maxLength: 1024
           description: Short text for a person.
         details:
           type: object
@@ -519,6 +572,8 @@ components:
           description: Details of the action.
         requestId:
           type: string
+          minLength: 1
+          maxLength: 128
           description: The `X-Request-ID` of the request.
         traceId:
           type: string
@@ -553,11 +608,6 @@ components:
         - csv
         - json
       description: The export format.
-    AuditNoStoreHeaders:
-      type: object
-      description: |-
-        Response headers for a response that has personal data, for example an IP address or a user agent.
-        A cache must not keep the response.
     AuditResult:
       type: string
       enum:
@@ -713,6 +763,48 @@ components:
       allOf:
         - $ref: '#/components/schemas/Problem'
       description: The service is not available.
+    TooManyExports:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The export limit of the principal or of the instance is reached. The code is `too_many_exports`.
     TooManyRequests:
       type: object
       allOf:
