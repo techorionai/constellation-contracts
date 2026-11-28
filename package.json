@@ -9,7 +9,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsp compile . --warn-as-error && node scripts/event-types.mjs",
+    "build": "node -e \"require('node:fs').rmSync('tsp-output/json-schema',{recursive:true,force:true})\" && tsp compile . --warn-as-error && node scripts/event-types.mjs",
     "format": "tsp format \"main.tsp\" \"lib/**/*.tsp\" \"services/**/*.tsp\" \"test/**/*.tsp\"",
     "lint": "node scripts/lint.mjs",
     "test": "vitest run"

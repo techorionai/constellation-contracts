@@ -27,8 +27,7 @@ union TicketPriority {
 @friendlyName("Ticket")
 model Ticket {
   /** ID of the ticket. A UUID in lowercase text form. */
-  @format("uuid")
-  id: string;
+  id: ResourceId;
 
   /** Number of the ticket. The service sets it. A person can read it more easily than the ID. */
   @minValue(1)
@@ -51,8 +50,7 @@ model Ticket {
   priority: TicketPriority;
 
   /** ID of the customer of the ticket. */
-  @format("uuid")
-  customerId: string;
+  customerId: ResourceId;
 
   /** Time when the ticket was created. */
   createdAt: utcDateTime;
@@ -78,8 +76,7 @@ model TicketCreate {
   priority?: TicketPriority;
 
   /** ID of the customer of the ticket. */
-  @format("uuid")
-  customerId: string;
+  customerId: ResourceId;
 }
 
 /** Request to change a ticket. A field that is not present does not change. The request needs at least one field. */
@@ -112,9 +109,7 @@ model TicketFilters {
   @query priority?: TicketPriority;
 
   /** Return only the tickets of this customer. */
-  @query
-  @format("uuid")
-  customerId?: string;
+  @query customerId?: ResourceId;
 }
 
 /** One page of tickets. */

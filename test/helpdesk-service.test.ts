@@ -35,6 +35,7 @@ const fill = (value: unknown): unknown =>
 const expected: [string, string, string, string, string][] = [
   ["Customers_list", "get", "/v1/customers", "helpdesk:customer:read", "200"],
   ["Customers_get", "get", "/v1/customers/{customerId}", "helpdesk:customer:read", "200"],
+  ["Customers_lookup", "post", "/v1/customers:lookup", "helpdesk:customer:read", "200"],
   ["Customers_create", "post", "/v1/customers", "helpdesk:customer:write", "201"],
   ["Customers_update", "patch", "/v1/customers/{customerId}", "helpdesk:customer:write", "200"],
   ["Tickets_list", "get", "/v1/tickets", "helpdesk:ticket:read", "200"],
@@ -88,14 +89,29 @@ describe("helpdesk service contract", () => {
 
   // U141
   it("U141: both emitters compile and write no file in the repository", async () => {
-    const folder = join(root, "generated", "event-types");
-    const before = await readdir(folder);
+    const snapshot = async (folder: string) =>
+      Object.fromEntries(
+        await Promise.all(
+          (await readdir(folder)).map(
+            async (name) =>
+              [name, await readFile(join(folder, name), "utf8")] as const,
+          ),
+        ),
+      );
+    const folders = [
+      join(root, "generated", "event-types"),
+      join(root, "generated", "openapi"),
+    ];
+    const before = await Promise.all(folders.map(snapshot));
     const result = await compileEntry(join(root, "main.tsp"));
     expect(result.diagnostics).toEqual([]);
     expect(Object.keys(result.files)).toContain(
       "Constellation.Helpdesk.openapi.yaml",
     );
-    expect(await readdir(folder)).toEqual(before);
+    for (const model of eventModels) {
+      expect(result.schemaFiles, model).toContain(`${model}.json`);
+    }
+    expect(await Promise.all(folders.map(snapshot))).toEqual(before);
     await SwaggerParser.validate(helpdeskFile);
   });
 
@@ -131,7 +147,8 @@ describe("helpdesk service contract", () => {
       }
     }
     const codes: Record<string, string[]> = {
-      Customers_list: ["invalid_page_token", "invalid_parameter"],
+      Customers_list: ["invalid_page_token"],
+      Customers_lookup: ["customer_not_found"],
       Customers_get: ["customer_not_found"],
       Customers_create: ["customer_email_taken", "validation_failed"],
       Customers_update: ["empty_update", "customer_not_found", "customer_email_taken"],
@@ -156,14 +173,41 @@ describe("helpdesk service contract", () => {
   });
 
   // U145
-  it("U145: no-store headers on each success response", () => {
-    for (const [id, , , , status] of expected) {
-      const headers = byId[id].op.responses[status].headers;
-      expect(headers["Cache-Control"].schema.enum, id).toEqual(["no-store"]);
-      expect(headers["Pragma"].schema.enum, id).toEqual(["no-cache"]);
+  it("U145: no-store headers on each response, also the error responses", () => {
+    for (const [id] of expected) {
+      const responses = Object.entries<Doc>(byId[id].op.responses);
+      expect(responses.length, id).toBeGreaterThan(4);
+      for (const [status, response] of responses) {
+        const headers = response.headers ?? {};
+        expect(headers["Cache-Control"]?.schema.enum, `${id} ${status}`).toEqual(["no-store"]);
+        expect(headers["Pragma"]?.schema.enum, `${id} ${status}`).toEqual(["no-cache"]);
+      }
+    }
+    for (const status of ["400", "401", "403", "404", "500", "503"]) {
+      expect(byId["Customers_get"].op.responses[status], status).toBeDefined();
     }
     expect(Object.keys(doc.components.schemas)).not.toContain(
       "HelpdeskNoStoreHeaders",
+    );
+  });
+
+  // U155
+  it("U155: the email lookup is a POST with the email in the body", () => {
+    const list = byId["Customers_list"].op;
+    const names = (list.parameters ?? []).map((p: Doc) => p.name ?? p.$ref);
+    expect(names.join(" ")).not.toContain("email");
+    const lookup = byId["Customers_lookup"].op;
+    expect(lookup.parameters ?? []).toEqual([]);
+    expect(Object.keys(doc.paths).join(" ")).not.toContain("email");
+    const body = lookup.requestBody.content["application/json"].schema;
+    expect(body.$ref).toBe("#/components/schemas/CustomerLookup");
+    const validate = check("CustomerLookup");
+    expect(validate({ email: "ada@example.com" })).toBe(true);
+    expect(validate({})).toBe(false);
+    expect(validate({ email: "" })).toBe(false);
+    expect(validate({ email: `${"e".repeat(243)}@example.com` })).toBe(false);
+    expect(Object.keys(lookup.responses).sort()).toEqual(
+      ["200", "400", "401", "403", "404", "500", "503"],
     );
   });
 

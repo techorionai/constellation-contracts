@@ -21,6 +21,8 @@ export type Doc = any;
 export interface CompileResult {
   diagnostics: string[];
   files: Record<string, Doc>;
+  /** File names of the JSON Schema emitter output. */
+  schemaFiles: string[];
 }
 
 /**
@@ -54,13 +56,15 @@ export async function compileEntry(
       (d) => `${d.severity} ${d.code}: ${d.message}`,
     );
     const files: Record<string, Doc> = {};
+    let schemaFiles: string[] = [];
     if (emit) {
+      schemaFiles = await readdir(join(outDir, "json-schema")).catch(() => []);
       for (const name of await readdir(outDir)) {
         if (name === "json-schema") continue;
         files[name] = parse(await readFile(join(outDir, name), "utf8"));
       }
     }
-    return { diagnostics, files };
+    return { diagnostics, files, schemaFiles };
   } finally {
     await rm(outDir, { recursive: true, force: true });
   }

@@ -15,13 +15,12 @@ paths:
       description: |-
         List the customers. The order is `createdAt` descending, then `id` descending.
         The page token is opaque. A token of another operation or with other filters gives 400 `invalid_page_token`.
-        A filter value that is not valid gives 400 `invalid_parameter`.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        There is no filter. To find a customer by email address, use `Customers_lookup`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - $ref: '#/components/parameters/CursorPageParams.pageToken'
         - $ref: '#/components/parameters/CursorPageParams.pageSize'
-        - $ref: '#/components/parameters/CustomerFilters'
       responses:
         '200':
           description: A page response with the no-store headers.
@@ -45,31 +44,91 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerPage'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -78,10 +137,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       x-required-scopes:
         - helpdesk:customer:read
     post:
@@ -90,7 +163,7 @@ paths:
         Create a customer. The service writes the event `helpdesk.customer.created`.
         Error code of `Conflict`: `customer_email_taken`. Two customers cannot have the same email address, with no case.
         Error code of `UnprocessableContent`: `validation_failed`. The response lists the fields that are not valid.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters: []
       responses:
@@ -116,43 +189,133 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '409':
-          description: The request conflicts with the state of the resource.
+          description: The request conflicts with the state of the resource. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Conflict'
+                $ref: '#/components/schemas/HelpdeskConflict'
         '422':
-          description: The request is well formed, but the server cannot process its content.
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/UnprocessableContent'
+                $ref: '#/components/schemas/HelpdeskUnprocessableContent'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -161,10 +324,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       requestBody:
         required: true
         content:
@@ -178,7 +355,7 @@ paths:
       operationId: Customers_get
       description: |-
         Get one customer. Error code of `NotFound`: `customer_not_found`.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - name: customerId
@@ -186,8 +363,7 @@ paths:
           required: true
           description: ID of the customer.
           schema:
-            type: string
-            format: uuid
+            $ref: '#/components/schemas/ResourceId'
       responses:
         '200':
           description: A Customer response with the no-store headers.
@@ -211,37 +387,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '404':
-          description: The resource does not exist.
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/NotFound'
+                $ref: '#/components/schemas/HelpdeskNotFound'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -250,10 +501,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       x-required-scopes:
         - helpdesk:customer:read
     patch:
@@ -265,7 +530,7 @@ paths:
         A real change writes the event `helpdesk.customer.updated`.
         Error code of `NotFound`: `customer_not_found`. Error code of `Conflict`: `customer_email_taken`.
         Error code of `UnprocessableContent`: `validation_failed`.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - name: customerId
@@ -273,8 +538,7 @@ paths:
           required: true
           description: ID of the customer.
           schema:
-            type: string
-            format: uuid
+            $ref: '#/components/schemas/ResourceId'
       responses:
         '200':
           description: A Customer response with the no-store headers.
@@ -298,49 +562,154 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '404':
-          description: The resource does not exist.
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/NotFound'
+                $ref: '#/components/schemas/HelpdeskNotFound'
         '409':
-          description: The request conflicts with the state of the resource.
+          description: The request conflicts with the state of the resource. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Conflict'
+                $ref: '#/components/schemas/HelpdeskConflict'
         '422':
-          description: The request is well formed, but the server cannot process its content.
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/UnprocessableContent'
+                $ref: '#/components/schemas/HelpdeskUnprocessableContent'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -349,10 +718,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       requestBody:
         required: true
         content:
@@ -361,6 +744,179 @@ paths:
               $ref: '#/components/schemas/CustomerUpdate'
       x-required-scopes:
         - helpdesk:customer:write
+  /v1/customers:lookup:
+    post:
+      operationId: Customers_lookup
+      description: |-
+        Find the one customer with an email address. The address is in the body and not in the URL, because logs and traces keep a URL.
+        The match is exact and has no case. The operation does not change data. It needs `helpdesk:customer:read`.
+        Error code of `NotFound`: `customer_not_found`.
+        The response has `Cache-Control: no-store` and `Pragma: no-cache`. This is also true for the error responses.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters: []
+      responses:
+        '200':
+          description: A Customer response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HelpdeskBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HelpdeskForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HelpdeskNotFound'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerLookup'
+      x-required-scopes:
+        - helpdesk:customer:read
   /v1/tickets:
     get:
       operationId: Tickets_list
@@ -368,7 +924,7 @@ paths:
         List the tickets. The order is `createdAt` descending, then `id` descending.
         The page token is opaque. A token of another operation or with other filters gives 400 `invalid_page_token`.
         A filter value that is not valid gives 400 `invalid_parameter`.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - $ref: '#/components/parameters/CursorPageParams.pageToken'
@@ -399,31 +955,91 @@ paths:
               schema:
                 $ref: '#/components/schemas/TicketPage'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -432,10 +1048,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       x-required-scopes:
         - helpdesk:ticket:read
     post:
@@ -445,7 +1075,7 @@ paths:
         The token needs `helpdesk:ticket:write` only. The service checks that the customer exists. It does not need `helpdesk:customer:read`.
         The service writes the event `helpdesk.ticket.created`.
         Error code of `UnprocessableContent`: `customer_unknown` when the customer does not exist, or `validation_failed`.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters: []
       responses:
@@ -471,37 +1101,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/Ticket'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '422':
-          description: The request is well formed, but the server cannot process its content.
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/UnprocessableContent'
+                $ref: '#/components/schemas/HelpdeskUnprocessableContent'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -510,10 +1215,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       requestBody:
         required: true
         content:
@@ -527,7 +1246,7 @@ paths:
       operationId: Tickets_get
       description: |-
         Get one ticket. Error code of `NotFound`: `ticket_not_found`.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - name: ticketId
@@ -535,8 +1254,7 @@ paths:
           required: true
           description: ID of the ticket.
           schema:
-            type: string
-            format: uuid
+            $ref: '#/components/schemas/ResourceId'
       responses:
         '200':
           description: A Ticket response with the no-store headers.
@@ -560,37 +1278,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/Ticket'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '404':
-          description: The resource does not exist.
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/NotFound'
+                $ref: '#/components/schemas/HelpdeskNotFound'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -599,10 +1392,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       x-required-scopes:
         - helpdesk:ticket:read
     patch:
@@ -613,7 +1420,7 @@ paths:
         An update with no real change returns 200 with the current ticket. It writes no event and no audit entry.
         A change of the status writes the event `helpdesk.ticket.status_changed`. A change of other fields writes `helpdesk.ticket.updated`.
         Error code of `NotFound`: `ticket_not_found`. Error code of `UnprocessableContent`: `validation_failed`.
-        The response has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
         - name: ticketId
@@ -621,8 +1428,7 @@ paths:
           required: true
           description: ID of the ticket.
           schema:
-            type: string
-            format: uuid
+            $ref: '#/components/schemas/ResourceId'
       responses:
         '200':
           description: A Ticket response with the no-store headers.
@@ -646,43 +1452,133 @@ paths:
               schema:
                 $ref: '#/components/schemas/Ticket'
         '400':
-          description: The request is not valid.
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/BadRequest'
+                $ref: '#/components/schemas/HelpdeskBadRequest'
         '401':
-          description: The request has no valid credentials.
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Unauthorized'
+                $ref: '#/components/schemas/HelpdeskUnauthorized'
         '403':
-          description: The principal does not have the permission.
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/Forbidden'
+                $ref: '#/components/schemas/HelpdeskForbidden'
         '404':
-          description: The resource does not exist.
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/NotFound'
+                $ref: '#/components/schemas/HelpdeskNotFound'
         '422':
-          description: The request is well formed, but the server cannot process its content.
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/UnprocessableContent'
+                $ref: '#/components/schemas/HelpdeskUnprocessableContent'
         '500':
-          description: The server has an internal error.
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/InternalServerError'
+                $ref: '#/components/schemas/HelpdeskInternalServerError'
         '503':
-          description: The service is not available.
+          description: The service is not available. The response has the no-store headers.
           headers:
             Retry-After:
               required: false
@@ -691,10 +1587,24 @@ paths:
                 type: integer
                 format: int32
                 minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/ServiceUnavailable'
+                $ref: '#/components/schemas/HelpdeskServiceUnavailable'
       requestBody:
         required: true
         content:
@@ -728,24 +1638,13 @@ components:
         type: string
         maxLength: 1024
       explode: false
-    CustomerFilters:
-      name: email
-      in: query
-      required: false
-      description: Return only the customer with this email address. The match is exact and has no case.
-      schema:
-        type: string
-        minLength: 1
-        maxLength: 254
-      explode: false
     TicketFilters.customerId:
       name: customerId
       in: query
       required: false
       description: Return only the tickets of this customer.
       schema:
-        type: string
-        format: uuid
+        $ref: '#/components/schemas/ResourceId'
       explode: false
     TicketFilters.priority:
       name: priority
@@ -764,23 +1663,6 @@ components:
         $ref: '#/components/schemas/TicketStatus'
       explode: false
   schemas:
-    BadRequest:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The request is not valid.
-    Conflict:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The request conflicts with the state of the resource.
-    ContentTooLarge:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: |-
-        The request body is larger than the limit of the service. The code is `content_too_large`.
-        The operator of the service sets the limit.
     Customer:
       type: object
       required:
@@ -791,8 +1673,8 @@ components:
         - updatedAt
       properties:
         id:
-          type: string
-          format: uuid
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
           description: ID of the customer. A UUID in lowercase text form.
         name:
           type: string
@@ -935,6 +1817,19 @@ components:
           pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
           description: W3C trace context (CloudEvents distributed tracing extension).
       description: The event `helpdesk.customer.created`. The `subject` is `customers/<id>`.
+    CustomerLookup:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 254
+          description: Email address of the customer. The match is exact and has no case.
+      description: |-
+        Request to find one customer by email address. The address is in the body and not in the URL,
+        because logs and traces keep a URL.
     CustomerPage:
       type: object
       required:
@@ -1092,43 +1987,7 @@ components:
           type: string
           description: Message for a person.
       description: One incorrect field of a request.
-    Forbidden:
-      type: object
-      properties:
-        missingScopes:
-          type: array
-          items:
-            $ref: '#/components/schemas/PermissionKey'
-          description: Permissions that the principal lacks. An agent uses them to ask the user for approval.
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The principal does not have the permission.
-    InternalServerError:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The server has an internal error.
-    NotFound:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The resource does not exist.
-    PermissionKey:
-      type: string
-      maxLength: 128
-      pattern: ^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$
-      description: |-
-        Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
-        The only exception is `identity:admin`, the permission of full administration of the identity service.
-    PrincipalType:
-      type: string
-      enum:
-        - user
-        - agent
-        - service
-        - workflow
-      description: Type of a principal.
-    Problem:
+    HelpdeskBadRequest:
       type: object
       required:
         - type
@@ -1169,22 +2028,326 @@ components:
           items:
             $ref: '#/components/schemas/FieldError'
           description: Field errors. Only for validation errors.
-      description: Problem details for an HTTP API (RFC 9457).
-    ReauthenticationRequired:
+      description: The request is not valid. The response has the no-store headers.
+    HelpdeskConflict:
       type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request conflicts with the state of the resource. The response has the no-store headers.
+    HelpdeskForbidden:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        missingScopes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionKey'
+          description: Permissions that the principal lacks. An agent uses them to ask the user for approval.
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The principal does not have the permission. The response has the no-store headers.
+    HelpdeskInternalServerError:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The service has an internal error. The response has the no-store headers.
+    HelpdeskNotFound:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The resource does not exist. The response has the no-store headers.
+    HelpdeskServiceUnavailable:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The service is not available. The response has the no-store headers.
+    HelpdeskUnauthorized:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request has no valid credentials. The response has the no-store headers.
+    HelpdeskUnprocessableContent:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+    PermissionKey:
+      type: string
+      maxLength: 128
+      pattern: ^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$
       description: |-
-        The token does not show a fresh login or a fresh MFA login (RFC 9470). The code is `reauthentication_required`.
-        A fresh login needs `auth_time` at most 5 minutes old. A fresh MFA login also needs `mfa` in `amr`.
-        The client must start a new authorization request with `max_age`. A token refresh does not help.
-        The header `WWW-Authenticate` is optional in this model, because the 401 response of an operation also covers `Unauthorized`.
-        An operation that uses this model always sends the header with the code `reauthentication_required`.
-    ServiceUnavailable:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The service is not available.
+        Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+        The only exception is `identity:admin`, the permission of full administration of the identity service.
+    PrincipalType:
+      type: string
+      enum:
+        - user
+        - agent
+        - service
+        - workflow
+      description: Type of a principal.
+    ResourceId:
+      type: string
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+      format: uuid
+      description: A UUID in lowercase text form. The pattern is RE2 syntax.
     Ticket:
       type: object
       required:
@@ -1198,8 +2361,8 @@ components:
         - updatedAt
       properties:
         id:
-          type: string
-          format: uuid
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
           description: ID of the ticket. A UUID in lowercase text form.
         number:
           type: integer
@@ -1225,8 +2388,8 @@ components:
             - $ref: '#/components/schemas/TicketPriority'
           description: Priority of the ticket.
         customerId:
-          type: string
-          format: uuid
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
           description: ID of the customer of the ticket.
         createdAt:
           type: string
@@ -1265,8 +2428,8 @@ components:
             - $ref: '#/components/schemas/TicketPriority'
           description: Priority of the ticket. The default is `normal`.
         customerId:
-          type: string
-          format: uuid
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
           description: ID of the customer of the ticket.
       description: Request to create a ticket. The status of a new ticket is `open`.
     TicketCreatedData:
@@ -1637,21 +2800,6 @@ components:
           pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
           description: W3C trace context (CloudEvents distributed tracing extension).
       description: The event `helpdesk.ticket.updated`. The `subject` is `tickets/<id>`.
-    TooManyRequests:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The client sent too many requests.
-    Unauthorized:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The request has no valid credentials.
-    UnprocessableContent:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/Problem'
-      description: The request is well formed, but the server cannot process its content.
   securitySchemes:
     BearerAuth:
       type: http

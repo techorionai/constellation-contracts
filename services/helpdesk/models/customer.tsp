@@ -1,6 +1,5 @@
 import "@typespec/http";
 
-using Http;
 using Constellation.Common;
 
 namespace Constellation.Helpdesk;
@@ -9,8 +8,7 @@ namespace Constellation.Helpdesk;
 @friendlyName("Customer")
 model Customer {
   /** ID of the customer. A UUID in lowercase text form. */
-  @format("uuid")
-  id: string;
+  id: ResourceId;
 
   /** Name of the customer. */
   @minLength(1)
@@ -72,14 +70,16 @@ model CustomerUpdate {
   phone?: string;
 }
 
-/** Query filters of the customer list. All are optional. */
-@friendlyName("CustomerFilters")
-model CustomerFilters {
-  /** Return only the customer with this email address. The match is exact and has no case. */
-  @query
+/**
+ * Request to find one customer by email address. The address is in the body and not in the URL,
+ * because logs and traces keep a URL.
+ */
+@friendlyName("CustomerLookup")
+model CustomerLookup {
+  /** Email address of the customer. The match is exact and has no case. */
   @minLength(1)
   @maxLength(254)
-  email?: string;
+  email: string;
 }
 
 /** One page of customers. */

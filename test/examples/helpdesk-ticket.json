@@ -61,6 +61,34 @@
         "createdAt": "2026-11-27T10:15:00Z",
         "updatedAt": "2026-11-27T10:15:00Z"
       }
+    },
+    {
+      "field": "id",
+      "value": {
+        "id": "0192F4C0-7B1A-7C3E-9A55-3F2D1C0B9A88",
+        "number": 42,
+        "subject": "Printer is broken",
+        "description": "The printer on floor 2 does not print.",
+        "status": "open",
+        "priority": "normal",
+        "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+        "createdAt": "2026-11-27T10:15:00Z",
+        "updatedAt": "2026-11-27T10:15:00Z"
+      }
+    },
+    {
+      "field": "customerId",
+      "value": {
+        "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+        "number": 42,
+        "subject": "Printer is broken",
+        "description": "The printer on floor 2 does not print.",
+        "status": "open",
+        "priority": "normal",
+        "customerId": "0192F4C0-7B1A-7C3E-9A55-3F2D1C0B9A89",
+        "createdAt": "2026-11-27T10:15:00Z",
+        "updatedAt": "2026-11-27T10:15:00Z"
+      }
     }
   ]
 }
