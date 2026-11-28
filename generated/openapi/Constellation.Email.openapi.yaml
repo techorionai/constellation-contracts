@@ -1,0 +1,4730 @@
+openapi: 3.0.0
+info:
+  title: Constellation Email
+  description: |-
+    The email service API. Clients send messages and manage templates, sender rules, and suppressions.
+    The audience of the service is `email`.
+    The permission manifest of the service is in `services/email/manifest.json`.
+    The event types of the service are in `services/email/events/event-types.json`.
+  version: 0.0.0
+tags: []
+paths:
+  /v1/messages:
+    post:
+      operationId: Messages_send
+      description: |-
+        Send a message. The body has `template` or `content`. A body with both or with neither is not valid.
+        The service puts the message in a queue and returns 202 with the `Message`. The status is `queued`,
+        or `suppressed` when all recipients are on the suppression list. The caller reads the status later or from the events.
+        Limits: `to` has 1 to 50 addresses. The total of `to`, `cc`, and `bcc` is a maximum of 50 addresses.
+        A schema cannot count 3 arrays, so the service checks the total and gives 422 `validation_failed`.
+        The service also gives 422 `validation_failed` for more than 50 template variables.
+        The body has a maximum of 2 MiB. A larger body gives 413 `content_too_large`.
+        The header `Idempotency-Key` is optional. The service keeps a key for each caller app for 24 hours.
+        The same key with the same body returns the first `Message` with 202.
+        The same key with a different body gives 422 `idempotency_key_reused`.
+        A retry with the same key while the first request is in progress gives 409 `idempotency_request_in_progress` with `Retry-After`.
+        A principal with no `app` claim gives 422 `sender_not_allowed`. A `from` address that no sender rule of the caller app allows also gives 422 `sender_not_allowed`.
+        Other codes of `UnprocessableContent`: `template_not_found`, `template_variables_invalid`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      responses:
+        '202':
+          description: A 202 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '409':
+          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailConflict'
+        '413':
+          description: The request body is too large. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailContentTooLarge'
+        '422':
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnprocessableContent'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      x-required-scopes:
+        - email:message:send
+    get:
+      operationId: Messages_list
+      description: |-
+        List the messages. The order is `createdAt` descending, then `id` descending.
+        The page token is opaque. A token of another operation or with other filters gives 400 `invalid_page_token`.
+        A principal with `email:message:read` sees only the messages of its own `app` claim. A principal with no `app` claim sees no message with this permission only.
+        A principal with `email:message:read_all` sees all messages.
+        The service deletes a message 24 hours after `sendAt`. The list does not show a deleted message.
+        No filter has an address.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - $ref: '#/components/parameters/CursorPageParams.pageToken'
+        - $ref: '#/components/parameters/CursorPageParams.pageSize'
+        - $ref: '#/components/parameters/MessageFilters.status'
+        - $ref: '#/components/parameters/MessageFilters.createdFrom'
+        - $ref: '#/components/parameters/MessageFilters.createdTo'
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagePage'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:message:read
+  /v1/messages/{id}:
+    get:
+      operationId: Messages_get
+      description: |-
+        Get one message. It has the metadata and the status for each recipient. It has no subject, no text, no HTML, and no template variables.
+        A principal with `email:message:read` sees only the messages of its own `app` claim. A principal with no `app` claim sees no message with this permission only.
+        A message of another app gives 404 `message_not_found`. A principal with `email:message:read_all` sees all messages.
+        The service deletes a message 24 hours after `sendAt`. After this time, the operation gives 404 `message_not_found`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the message.
+          schema:
+            $ref: '#/components/schemas/ResourceId'
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailNotFound'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:message:read
+  /v1/sender-rules:
+    get:
+      operationId: SenderRules_list
+      description: |-
+        List the sender rules. The order is `createdAt` descending, then `id` descending.
+        The page token is opaque. A token of another operation or with other filters gives 400 `invalid_page_token`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - $ref: '#/components/parameters/CursorPageParams.pageToken'
+        - $ref: '#/components/parameters/CursorPageParams.pageSize'
+        - $ref: '#/components/parameters/SenderRuleFilters'
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SenderRulePage'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:sender:read
+    post:
+      operationId: SenderRules_create
+      description: |-
+        Create a sender rule. The service permits a `from` address when a rule of the caller app has the same address, or the same domain.
+        Error code of `Conflict`: `sender_rule_exists`. Error code of `UnprocessableContent`: `validation_failed`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters: []
+      responses:
+        '201':
+          description: A 201 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SenderRule'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '409':
+          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailConflict'
+        '422':
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnprocessableContent'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SenderRuleCreate'
+      x-required-scopes:
+        - email:sender:write
+  /v1/sender-rules/{id}:
+    delete:
+      operationId: SenderRules_delete
+      description: |-
+        Delete a sender rule. Error code of `NotFound`: `sender_rule_not_found`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the sender rule.
+          schema:
+            $ref: '#/components/schemas/ResourceId'
+      responses:
+        '204':
+          description: A 204 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailNotFound'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:sender:write
+  /v1/suppressions:
+    get:
+      operationId: Suppressions_list
+      description: |-
+        List the suppressions. The order is `createdAt` descending, then `id` descending.
+        The page token is opaque. A token of another operation or with other filters gives 400 `invalid_page_token`.
+        There is no address filter. To find a suppression by address, use `Suppressions_lookup`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - $ref: '#/components/parameters/CursorPageParams.pageToken'
+        - $ref: '#/components/parameters/CursorPageParams.pageSize'
+        - $ref: '#/components/parameters/SuppressionFilters'
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuppressionPage'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:suppression:read
+    post:
+      operationId: Suppressions_create
+      description: |-
+        Create a manual suppression. The reason is `manual`.
+        Error code of `Conflict`: `suppression_exists`. Error code of `UnprocessableContent`: `validation_failed`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters: []
+      responses:
+        '201':
+          description: A 201 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Suppression'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '409':
+          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailConflict'
+        '422':
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnprocessableContent'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuppressionCreate'
+      x-required-scopes:
+        - email:suppression:write
+  /v1/suppressions/{id}:
+    delete:
+      operationId: Suppressions_delete
+      description: |-
+        Delete a suppression of any reason. Error code of `NotFound`: `suppression_not_found`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the suppression.
+          schema:
+            $ref: '#/components/schemas/ResourceId'
+      responses:
+        '204':
+          description: A 204 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailNotFound'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:suppression:write
+  /v1/suppressions:lookup:
+    post:
+      operationId: Suppressions_lookup
+      description: |-
+        Find the one suppression with an address. The address is in the body and not in the URL, because logs and traces keep a URL.
+        The match is exact and has no case. The operation does not change data. It needs `email:suppression:read`.
+        Error code of `NotFound`: `suppression_not_found`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters: []
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Suppression'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailNotFound'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuppressionLookup'
+      x-required-scopes:
+        - email:suppression:read
+  /v1/templates:
+    get:
+      operationId: Templates_list
+      description: |-
+        List the templates. The order is `createdAt` descending, then `id` descending.
+        The page token is opaque. A token of another operation gives 400 `invalid_page_token`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - $ref: '#/components/parameters/CursorPageParams.pageToken'
+        - $ref: '#/components/parameters/CursorPageParams.pageSize'
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatePage'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:template:read
+    post:
+      operationId: Templates_create
+      description: |-
+        Create a template. The subject, the text, and the HTML use Go template syntax.
+        Error code of `Conflict`: `template_key_taken`. Error code of `UnprocessableContent`: `template_syntax_invalid` for a bad template, or `validation_failed`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters: []
+      responses:
+        '201':
+          description: A 201 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '409':
+          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailConflict'
+        '422':
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnprocessableContent'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateCreate'
+      x-required-scopes:
+        - email:template:write
+  /v1/templates/{id}:
+    get:
+      operationId: Templates_get
+      description: |-
+        Get one template. Error code of `NotFound`: `template_not_found`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the template.
+          schema:
+            $ref: '#/components/schemas/ResourceId'
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailNotFound'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:template:read
+    patch:
+      operationId: Templates_update
+      description: |-
+        Change a template. A field that is not in the body does not change. The key does not change.
+        A body with no field gives 400 `empty_update`.
+        Error code of `NotFound`: `template_not_found`. Error code of `UnprocessableContent`: `template_syntax_invalid` or `validation_failed`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the template.
+          schema:
+            $ref: '#/components/schemas/ResourceId'
+      responses:
+        '200':
+          description: A 200 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailNotFound'
+        '422':
+          description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnprocessableContent'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TemplateUpdate'
+      x-required-scopes:
+        - email:template:write
+    delete:
+      operationId: Templates_delete
+      description: |-
+        Delete a template. Error code of `NotFound`: `template_not_found`.
+        Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
+        Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the template.
+          schema:
+            $ref: '#/components/schemas/ResourceId'
+      responses:
+        '204':
+          description: A 204 response with the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+        '400':
+          description: The request is not valid. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailBadRequest'
+        '401':
+          description: The request has no valid credentials. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailUnauthorized'
+        '403':
+          description: The principal does not have the permission. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailForbidden'
+        '404':
+          description: The resource does not exist. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailNotFound'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
+        '500':
+          description: The service has an internal error. The response has the no-store headers.
+          headers:
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailInternalServerError'
+        '503':
+          description: The service is not available. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: false
+              description: Seconds to wait before the next request. Optional.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailServiceUnavailable'
+      x-required-scopes:
+        - email:template:write
+security:
+  - BearerAuth: []
+components:
+  parameters:
+    CursorPageParams.pageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Maximum number of items in the page.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 200
+        default: 50
+      explode: false
+    CursorPageParams.pageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: Opaque token from `nextPageToken` of the previous page.
+      schema:
+        type: string
+        maxLength: 1024
+      explode: false
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Key of the request. The same key with the same body returns the first result.
+      schema:
+        type: string
+        pattern: ^[ -~]+$
+        minLength: 1
+        maxLength: 255
+    MessageFilters.createdFrom:
+      name: createdFrom
+      in: query
+      required: false
+      description: Show only messages with `createdAt` at or after this time.
+      schema:
+        type: string
+        format: date-time
+      explode: false
+    MessageFilters.createdTo:
+      name: createdTo
+      in: query
+      required: false
+      description: Show only messages with `createdAt` before this time.
+      schema:
+        type: string
+        format: date-time
+      explode: false
+    MessageFilters.status:
+      name: status
+      in: query
+      required: false
+      description: Show only messages with this status.
+      schema:
+        $ref: '#/components/schemas/MessageStatus'
+      explode: false
+    SenderRuleFilters:
+      name: app
+      in: query
+      required: false
+      description: Show only the rules of this app.
+      schema:
+        $ref: '#/components/schemas/AppKey'
+      explode: false
+    SuppressionFilters:
+      name: reason
+      in: query
+      required: false
+      description: Show only suppressions with this reason.
+      schema:
+        $ref: '#/components/schemas/SuppressionReason'
+      explode: false
+  schemas:
+    AppKey:
+      type: string
+      maxLength: 32
+      pattern: ^[a-z][a-z0-9_]*$
+      description: Key of an application, for example `helpdesk` or `customer_portal`.
+    ContentSendRequest:
+      type: object
+      required:
+        - from
+        - to
+        - content
+      properties:
+        from:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Address of the sender. A sender rule of the caller app must allow it.
+        fromName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Display name of the sender.
+        to:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          minItems: 1
+          maxItems: 50
+          description: Recipients.
+        cc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          maxItems: 50
+          description: Copy recipients.
+        bcc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          maxItems: 50
+          description: Blind copy recipients.
+        replyTo:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Address for replies.
+        threading:
+          allOf:
+            - $ref: '#/components/schemas/MessageThreading'
+          description: Fields to put the message in a thread.
+        sendAt:
+          type: string
+          format: date-time
+          description: Send time. A maximum of 7 days after the request. The default is now.
+        content:
+          allOf:
+            - $ref: '#/components/schemas/MessageContent'
+          description: The content.
+      description: Send request with content.
+    EmailAddress:
+      type: string
+      minLength: 3
+      maxLength: 254
+      description: |-
+        An email address. The contract checks only the length.
+        The service checks the form of the address.
+    EmailBadRequest:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request is not valid. The response has the no-store headers.
+    EmailBounceType:
+      type: string
+      enum:
+        - permanent
+        - transient
+        - undetermined
+      description: |-
+        Type of a bounce. `permanent` is a rejection of the 5xx class.
+        `transient` is a rejection of the 4xx class. `undetermined` is a rejection with no known class.
+    EmailConflict:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+    EmailContentTooLarge:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request body is too large. The response has the no-store headers.
+    EmailFailureCode:
+      type: string
+      enum:
+        - permanent_rejection
+        - attempts_exhausted
+        - expired
+      description: Reason why a message failed.
+    EmailForbidden:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        missingScopes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionKey'
+          description: Permissions that the principal lacks. An agent uses them to ask the user for approval.
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The principal does not have the permission. The response has the no-store headers.
+    EmailInternalServerError:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The service has an internal error. The response has the no-store headers.
+    EmailMessageBouncedData:
+      type: object
+      required:
+        - messageId
+        - senderApp
+        - recipientCount
+        - bounceType
+      properties:
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EventResourceId'
+          description: ID of the message.
+        senderApp:
+          allOf:
+            - $ref: '#/components/schemas/EventAppKey'
+          description: Key of the app that sent the message.
+        recipientCount:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+          description: Number of recipients that this event is about.
+        bounceType:
+          allOf:
+            - $ref: '#/components/schemas/EmailBounceType'
+          description: Type of the bounce.
+      description: |-
+        Data of the event `email.message.bounced`. The mail system rejected the message.
+        `bounceType` is `permanent` for a rejection of the 5xx class, `transient` for the 4xx class,
+        and `undetermined` for a rejection with no known class.
+    EmailMessageBouncedEvent:
+      type: object
+      required:
+        - specversion
+        - id
+        - source
+        - type
+        - time
+        - datacontenttype
+        - data
+        - actor
+        - actortype
+      properties:
+        specversion:
+          type: string
+          enum:
+            - '1.0'
+          description: CloudEvents version.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the event. Unique for each `source`.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 256
+          format: uri-reference
+          description: URI reference of the service that made the event, for example `/helpdesk`.
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        time:
+          type: string
+          format: date-time
+          description: Time when the event happened.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource, for example the ticket ID.
+        datacontenttype:
+          type: string
+          enum:
+            - application/json
+          description: Media type of `data`.
+        dataschema:
+          type: string
+          format: uri
+          description: URI of the schema of `data`.
+        data:
+          allOf:
+            - $ref: '#/components/schemas/EmailMessageBouncedData'
+          description: Data of the event.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `sub` of the token: the ID of the principal.'
+        actortype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `act` of the token: the agent that acts for the user.'
+        acttype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
+        traceparent:
+          type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
+          description: W3C trace context (CloudEvents distributed tracing extension).
+      description: The event `email.message.bounced`. The `subject` is `messages/<id>`.
+    EmailMessageComplainedData:
+      type: object
+      required:
+        - messageId
+        - senderApp
+        - recipientCount
+      properties:
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EventResourceId'
+          description: ID of the message.
+        senderApp:
+          allOf:
+            - $ref: '#/components/schemas/EventAppKey'
+          description: Key of the app that sent the message.
+        recipientCount:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+          description: Number of recipients that this event is about.
+      description: Data of the event `email.message.complained`. A recipient marked the message as unwanted.
+    EmailMessageComplainedEvent:
+      type: object
+      required:
+        - specversion
+        - id
+        - source
+        - type
+        - time
+        - datacontenttype
+        - data
+        - actor
+        - actortype
+      properties:
+        specversion:
+          type: string
+          enum:
+            - '1.0'
+          description: CloudEvents version.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the event. Unique for each `source`.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 256
+          format: uri-reference
+          description: URI reference of the service that made the event, for example `/helpdesk`.
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        time:
+          type: string
+          format: date-time
+          description: Time when the event happened.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource, for example the ticket ID.
+        datacontenttype:
+          type: string
+          enum:
+            - application/json
+          description: Media type of `data`.
+        dataschema:
+          type: string
+          format: uri
+          description: URI of the schema of `data`.
+        data:
+          allOf:
+            - $ref: '#/components/schemas/EmailMessageComplainedData'
+          description: Data of the event.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `sub` of the token: the ID of the principal.'
+        actortype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `act` of the token: the agent that acts for the user.'
+        acttype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
+        traceparent:
+          type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
+          description: W3C trace context (CloudEvents distributed tracing extension).
+      description: The event `email.message.complained`. The `subject` is `messages/<id>`.
+    EmailMessageDeliveredData:
+      type: object
+      required:
+        - messageId
+        - senderApp
+        - recipientCount
+      properties:
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EventResourceId'
+          description: ID of the message.
+        senderApp:
+          allOf:
+            - $ref: '#/components/schemas/EventAppKey'
+          description: Key of the app that sent the message.
+        recipientCount:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+          description: Number of recipients that this event is about.
+      description: |-
+        Data of the event `email.message.delivered`. The mail system delivered the message.
+        `recipientCount` is the number of recipients that this one event is about.
+        A notification can be about only some recipients of a message.
+    EmailMessageDeliveredEvent:
+      type: object
+      required:
+        - specversion
+        - id
+        - source
+        - type
+        - time
+        - datacontenttype
+        - data
+        - actor
+        - actortype
+      properties:
+        specversion:
+          type: string
+          enum:
+            - '1.0'
+          description: CloudEvents version.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the event. Unique for each `source`.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 256
+          format: uri-reference
+          description: URI reference of the service that made the event, for example `/helpdesk`.
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        time:
+          type: string
+          format: date-time
+          description: Time when the event happened.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource, for example the ticket ID.
+        datacontenttype:
+          type: string
+          enum:
+            - application/json
+          description: Media type of `data`.
+        dataschema:
+          type: string
+          format: uri
+          description: URI of the schema of `data`.
+        data:
+          allOf:
+            - $ref: '#/components/schemas/EmailMessageDeliveredData'
+          description: Data of the event.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `sub` of the token: the ID of the principal.'
+        actortype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `act` of the token: the agent that acts for the user.'
+        acttype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
+        traceparent:
+          type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
+          description: W3C trace context (CloudEvents distributed tracing extension).
+      description: The event `email.message.delivered`. The `subject` is `messages/<id>`.
+    EmailMessageFailedData:
+      type: object
+      required:
+        - messageId
+        - senderApp
+        - recipientCount
+        - attempt
+        - failureCode
+      properties:
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EventResourceId'
+          description: ID of the message.
+        senderApp:
+          allOf:
+            - $ref: '#/components/schemas/EventAppKey'
+          description: Key of the app that sent the message.
+        recipientCount:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+          description: Number of recipients that this event is about.
+        attempt:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Number of the last send attempt.
+        failureCode:
+          allOf:
+            - $ref: '#/components/schemas/EmailFailureCode'
+          description: Reason of the failure.
+      description: Data of the event `email.message.failed`. The service did not send the message and does not try again.
+    EmailMessageFailedEvent:
+      type: object
+      required:
+        - specversion
+        - id
+        - source
+        - type
+        - time
+        - datacontenttype
+        - data
+        - actor
+        - actortype
+      properties:
+        specversion:
+          type: string
+          enum:
+            - '1.0'
+          description: CloudEvents version.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the event. Unique for each `source`.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 256
+          format: uri-reference
+          description: URI reference of the service that made the event, for example `/helpdesk`.
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        time:
+          type: string
+          format: date-time
+          description: Time when the event happened.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource, for example the ticket ID.
+        datacontenttype:
+          type: string
+          enum:
+            - application/json
+          description: Media type of `data`.
+        dataschema:
+          type: string
+          format: uri
+          description: URI of the schema of `data`.
+        data:
+          allOf:
+            - $ref: '#/components/schemas/EmailMessageFailedData'
+          description: Data of the event.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `sub` of the token: the ID of the principal.'
+        actortype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `act` of the token: the agent that acts for the user.'
+        acttype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
+        traceparent:
+          type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
+          description: W3C trace context (CloudEvents distributed tracing extension).
+      description: The event `email.message.failed`. The `subject` is `messages/<id>`.
+    EmailMessageSentData:
+      type: object
+      required:
+        - messageId
+        - senderApp
+        - recipientCount
+        - attempt
+      properties:
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EventResourceId'
+          description: ID of the message.
+        senderApp:
+          allOf:
+            - $ref: '#/components/schemas/EventAppKey'
+          description: Key of the app that sent the message.
+        recipientCount:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+          description: Number of recipients that this event is about.
+        attempt:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Number of the send attempt.
+      description: |-
+        Data of the event `email.message.sent`. The service sent the message to the mail system.
+        It has no address, no subject, and no content.
+    EmailMessageSentEvent:
+      type: object
+      required:
+        - specversion
+        - id
+        - source
+        - type
+        - time
+        - datacontenttype
+        - data
+        - actor
+        - actortype
+      properties:
+        specversion:
+          type: string
+          enum:
+            - '1.0'
+          description: CloudEvents version.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the event. Unique for each `source`.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 256
+          format: uri-reference
+          description: URI reference of the service that made the event, for example `/helpdesk`.
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        time:
+          type: string
+          format: date-time
+          description: Time when the event happened.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource, for example the ticket ID.
+        datacontenttype:
+          type: string
+          enum:
+            - application/json
+          description: Media type of `data`.
+        dataschema:
+          type: string
+          format: uri
+          description: URI of the schema of `data`.
+        data:
+          allOf:
+            - $ref: '#/components/schemas/EmailMessageSentData'
+          description: Data of the event.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `sub` of the token: the ID of the principal.'
+        actortype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `act` of the token: the agent that acts for the user.'
+        acttype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
+        traceparent:
+          type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
+          description: W3C trace context (CloudEvents distributed tracing extension).
+      description: The event `email.message.sent`. The `subject` is `messages/<id>`.
+    EmailMessageSuppressedData:
+      type: object
+      required:
+        - messageId
+        - senderApp
+        - recipientCount
+      properties:
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/EventResourceId'
+          description: ID of the message.
+        senderApp:
+          allOf:
+            - $ref: '#/components/schemas/EventAppKey'
+          description: Key of the app that sent the message.
+        recipientCount:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+          description: Number of recipients that this event is about.
+      description: Data of the event `email.message.suppressed`. The service did not send to the recipients because they are on the suppression list.
+    EmailMessageSuppressedEvent:
+      type: object
+      required:
+        - specversion
+        - id
+        - source
+        - type
+        - time
+        - datacontenttype
+        - data
+        - actor
+        - actortype
+      properties:
+        specversion:
+          type: string
+          enum:
+            - '1.0'
+          description: CloudEvents version.
+        id:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the event. Unique for each `source`.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 256
+          format: uri-reference
+          description: URI reference of the service that made the event, for example `/helpdesk`.
+        type:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Type of the event.
+        time:
+          type: string
+          format: date-time
+          description: Time when the event happened.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: ID of the resource, for example the ticket ID.
+        datacontenttype:
+          type: string
+          enum:
+            - application/json
+          description: Media type of `data`.
+        dataschema:
+          type: string
+          format: uri
+          description: URI of the schema of `data`.
+        data:
+          allOf:
+            - $ref: '#/components/schemas/EmailMessageSuppressedData'
+          description: Data of the event.
+        actor:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `sub` of the token: the ID of the principal.'
+        actortype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `actor`.
+        act:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: 'The `act` of the token: the agent that acts for the user.'
+        acttype:
+          allOf:
+            - $ref: '#/components/schemas/PrincipalType'
+          description: Type of the principal in `act`. Set `act` and `acttype` together, or set neither.
+        traceparent:
+          type: string
+          pattern: ^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
+          description: W3C trace context (CloudEvents distributed tracing extension).
+      description: The event `email.message.suppressed`. The `subject` is `messages/<id>`.
+    EmailNotFound:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The resource does not exist. The response has the no-store headers.
+    EmailServiceUnavailable:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The service is not available. The response has the no-store headers.
+    EmailTooManyRequests:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The client sent too many requests. The response has the no-store headers.
+    EmailUnauthorized:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request has no valid credentials. The response has the no-store headers.
+    EmailUnprocessableContent:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: The request is well formed, but the service cannot process its content. The response has the no-store headers.
+    EventAppKey:
+      type: string
+      maxLength: 32
+      pattern: ^[a-z][a-z0-9_]*$
+      description: Key of the app that sent the message.
+    EventResourceId:
+      type: string
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+      format: uuid
+      description: A UUID in lowercase text form. The pattern is RE2 syntax.
+    EventType:
+      type: string
+      maxLength: 128
+      pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}$
+      description: Type of an event, for example `helpdesk.ticket.created`.
+    FieldError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: JSON Pointer to the incorrect value.
+        code:
+          type: string
+          description: Stable code that a machine can read.
+        message:
+          type: string
+          description: Message for a person.
+      description: One incorrect field of a request.
+    Message:
+      type: object
+      required:
+        - id
+        - senderApp
+        - status
+        - from
+        - recipients
+        - attempts
+        - sendAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
+          description: ID of the message.
+        senderApp:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: Key of the app that sent the message.
+        status:
+          allOf:
+            - $ref: '#/components/schemas/MessageStatus'
+          description: Status of the message.
+        from:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Address of the sender.
+        recipients:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageRecipient'
+          description: Recipients of the message.
+        templateKey:
+          type: string
+          description: Key of the template. Only if the message used a template.
+        attempts:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of send attempts.
+        sendAt:
+          type: string
+          format: date-time
+          description: Time when the service starts to send the message.
+        createdAt:
+          type: string
+          format: date-time
+          description: Time when the message was accepted.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Time when the message was changed.
+        sentAt:
+          type: string
+          format: date-time
+          description: Time when the service sent the message.
+        failureCode:
+          allOf:
+            - $ref: '#/components/schemas/EmailFailureCode'
+          description: Reason of the failure. Only for the status `failed`.
+      description: |-
+        A message in the queue or sent. It has the metadata and the status for each recipient.
+        It does not have the subject, the text, the HTML, or the template variables.
+        The service deletes a message 24 hours after `sendAt`. After this time, a read gives 404 `message_not_found`.
+    MessageContent:
+      type: object
+      required:
+        - subject
+        - text
+      properties:
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 998
+          description: Subject.
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: Text body. A maximum of 1 MiB.
+        html:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: HTML body. A maximum of 1 MiB.
+      description: Message content that the caller gives.
+    MessagePage:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          description: Items of the page.
+        nextPageToken:
+          type: string
+          description: Token for the next page. No value means that this is the last page.
+      description: One page of messages.
+    MessageRecipient:
+      type: object
+      required:
+        - address
+        - kind
+        - status
+      properties:
+        address:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Email address of the recipient.
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/RecipientKind'
+          description: Kind of the recipient.
+        status:
+          allOf:
+            - $ref: '#/components/schemas/RecipientStatus'
+          description: Status of the recipient.
+        bounceType:
+          allOf:
+            - $ref: '#/components/schemas/EmailBounceType'
+          description: Type of the bounce. Only for the status `bounced`.
+      description: One recipient of a message.
+    MessageStatus:
+      type: string
+      enum:
+        - queued
+        - sending
+        - sent
+        - partially_sent
+        - failed
+        - suppressed
+      description: Status of a message.
+    MessageThreading:
+      type: object
+      properties:
+        inReplyTo:
+          type: string
+          minLength: 1
+          maxLength: 998
+          description: Message ID of the message that this message answers.
+        references:
+          type: array
+          items:
+            type: string
+          maxItems: 100
+          description: Message IDs of the thread.
+      description: Message IDs for a thread.
+    PermissionKey:
+      type: string
+      maxLength: 128
+      pattern: ^(?:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*:[a-z][a-z0-9_]*|identity:admin)$
+      description: |-
+        Key of a permission in the form `<app>:<resource>:<action>`, for example `helpdesk:ticket:write`.
+        The only exception is `identity:admin`, the permission of full administration of the identity service.
+    PrincipalType:
+      type: string
+      enum:
+        - user
+        - agent
+        - service
+        - workflow
+      description: Type of a principal.
+    RecipientKind:
+      type: string
+      enum:
+        - to
+        - cc
+        - bcc
+      description: Kind of a recipient.
+    RecipientStatus:
+      type: string
+      enum:
+        - pending
+        - sent
+        - delivered
+        - bounced
+        - complained
+        - suppressed
+        - failed
+      description: |-
+        Status of a recipient. A delivery notification changes only the status of the recipient.
+        The status of the message stays `sent` or `partially_sent`.
+    ResourceId:
+      type: string
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+      format: uuid
+      description: A UUID in lowercase text form. The pattern is RE2 syntax.
+    SendMessageFields:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Address of the sender. A sender rule of the caller app must allow it.
+        fromName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Display name of the sender.
+        to:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          minItems: 1
+          maxItems: 50
+          description: Recipients.
+        cc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          maxItems: 50
+          description: Copy recipients.
+        bcc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          maxItems: 50
+          description: Blind copy recipients.
+        replyTo:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Address for replies.
+        threading:
+          allOf:
+            - $ref: '#/components/schemas/MessageThreading'
+          description: Fields to put the message in a thread.
+        sendAt:
+          type: string
+          format: date-time
+          description: Send time. A maximum of 7 days after the request. The default is now.
+      description: Fields that all send requests have.
+    SendMessageRequest:
+      oneOf:
+        - $ref: '#/components/schemas/TemplateSendRequest'
+        - $ref: '#/components/schemas/ContentSendRequest'
+      description: Request to send a message. The body has `template` or `content`. A body with both is not valid.
+    SenderRule:
+      type: object
+      required:
+        - id
+        - app
+        - kind
+        - value
+        - createdAt
+      properties:
+        id:
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
+          description: ID of the rule.
+        app:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: Key of the app that the rule applies to.
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/SenderRuleKind'
+          description: Kind of the rule.
+        value:
+          type: string
+          minLength: 1
+          maxLength: 254
+          description: The domain or the address.
+        createdAt:
+          type: string
+          format: date-time
+          description: Time when the rule was created.
+      description: A rule that lets an app send from a domain or from an address.
+    SenderRuleCreate:
+      type: object
+      required:
+        - app
+        - kind
+        - value
+      properties:
+        app:
+          allOf:
+            - $ref: '#/components/schemas/AppKey'
+          description: Key of the app that the rule applies to.
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/SenderRuleKind'
+          description: Kind of the rule.
+        value:
+          type: string
+          minLength: 1
+          maxLength: 254
+          description: The domain or the address.
+      description: Request to create a sender rule.
+    SenderRuleKind:
+      type: string
+      enum:
+        - domain
+        - address
+      description: Kind of a sender rule.
+    SenderRulePage:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SenderRule'
+          description: Items of the page.
+        nextPageToken:
+          type: string
+          description: Token for the next page. No value means that this is the last page.
+      description: One page of sender rules.
+    Suppression:
+      type: object
+      required:
+        - id
+        - address
+        - reason
+        - createdAt
+      properties:
+        id:
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
+          description: ID of the suppression.
+        address:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: The suppressed address.
+        reason:
+          allOf:
+            - $ref: '#/components/schemas/SuppressionReason'
+          description: Reason of the suppression.
+        messageId:
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
+          description: ID of the message that caused the suppression.
+        createdAt:
+          type: string
+          format: date-time
+          description: Time when the suppression was created.
+      description: An address that the service does not send to.
+    SuppressionCreate:
+      type: object
+      required:
+        - address
+      properties:
+        address:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: The address to suppress.
+      description: Request to create a manual suppression. The reason is `manual`.
+    SuppressionLookup:
+      type: object
+      required:
+        - address
+      properties:
+        address:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: The address. The match is exact and has no case.
+      description: |-
+        Request to find one suppression by address. The address is in the body and not in the URL,
+        because logs and traces keep a URL.
+    SuppressionPage:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Suppression'
+          description: Items of the page.
+        nextPageToken:
+          type: string
+          description: Token for the next page. No value means that this is the last page.
+      description: One page of suppressions.
+    SuppressionReason:
+      type: string
+      enum:
+        - bounce
+        - complaint
+        - manual
+      description: Reason of a suppression.
+    Template:
+      type: object
+      required:
+        - id
+        - key
+        - subject
+        - text
+        - variables
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          allOf:
+            - $ref: '#/components/schemas/ResourceId'
+          description: ID of the template.
+        key:
+          type: string
+          pattern: ^[a-z][a-z0-9_.-]{0,63}$
+          description: Unique key of the template.
+        description:
+          type: string
+          maxLength: 500
+          description: Description.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 998
+          description: Subject template.
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: Text template.
+        html:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: HTML template.
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateVariable'
+          maxItems: 50
+          description: Variables of the template.
+        createdAt:
+          type: string
+          format: date-time
+          description: Time when the template was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Time when the template was changed.
+      description: An email template. The subject, the text, and the HTML use Go template syntax.
+    TemplateCreate:
+      type: object
+      required:
+        - key
+        - subject
+        - text
+      properties:
+        key:
+          type: string
+          pattern: ^[a-z][a-z0-9_.-]{0,63}$
+          description: Unique key of the template.
+        description:
+          type: string
+          maxLength: 500
+          description: Description.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 998
+          description: Subject template.
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: Text template.
+        html:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: HTML template.
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateVariable'
+          maxItems: 50
+          description: Variables of the template.
+      description: Request to create a template.
+    TemplatePage:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Template'
+          description: Items of the page.
+        nextPageToken:
+          type: string
+          description: Token for the next page. No value means that this is the last page.
+      description: One page of templates.
+    TemplateReference:
+      type: object
+      required:
+        - key
+        - variables
+      properties:
+        key:
+          type: string
+          pattern: ^[a-z][a-z0-9_.-]{0,63}$
+          description: Key of the template.
+        variables:
+          type: object
+          additionalProperties:
+            type: string
+          description: Values of the variables. The key is a variable name. A maximum of 50 variables. Each value has a maximum of 10000 characters.
+      description: A template and its variables for a send request.
+    TemplateSendRequest:
+      type: object
+      required:
+        - from
+        - to
+        - template
+      properties:
+        from:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Address of the sender. A sender rule of the caller app must allow it.
+        fromName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Display name of the sender.
+        to:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          minItems: 1
+          maxItems: 50
+          description: Recipients.
+        cc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          maxItems: 50
+          description: Copy recipients.
+        bcc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAddress'
+          maxItems: 50
+          description: Blind copy recipients.
+        replyTo:
+          allOf:
+            - $ref: '#/components/schemas/EmailAddress'
+          description: Address for replies.
+        threading:
+          allOf:
+            - $ref: '#/components/schemas/MessageThreading'
+          description: Fields to put the message in a thread.
+        sendAt:
+          type: string
+          format: date-time
+          description: Send time. A maximum of 7 days after the request. The default is now.
+        template:
+          allOf:
+            - $ref: '#/components/schemas/TemplateReference'
+          description: The template.
+      description: Send request that uses a template.
+    TemplateUpdate:
+      type: object
+      properties:
+        description:
+          type: string
+          maxLength: 500
+          description: Description.
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 998
+          description: Subject template.
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: Text template.
+        html:
+          type: string
+          minLength: 1
+          maxLength: 1048576
+          description: HTML template.
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateVariable'
+          maxItems: 50
+          description: Variables of the template.
+      description: Request to change a template. A field that is not present does not change. The request needs at least one field. The key does not change.
+    TemplateVariable:
+      type: object
+      required:
+        - name
+        - required
+      properties:
+        name:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_]{0,63}$
+          description: Name of the variable.
+        required:
+          type: boolean
+          description: If true, a send must give a value.
+      description: One variable of a template.
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: Bearer

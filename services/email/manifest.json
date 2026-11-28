@@ -1,0 +1,50 @@
+{
+  "app": "email",
+  "permissions": [
+    { "key": "email:message:send", "description": "Send messages." },
+    { "key": "email:message:read", "description": "Read the messages of the own app." },
+    { "key": "email:message:read_all", "description": "Read the messages of all apps." },
+    { "key": "email:template:read", "description": "List and read templates." },
+    { "key": "email:template:write", "description": "Create, change, and delete templates." },
+    { "key": "email:sender:read", "description": "List sender rules." },
+    { "key": "email:sender:write", "description": "Create and delete sender rules." },
+    { "key": "email:suppression:read", "description": "List and find suppressions." },
+    { "key": "email:suppression:write", "description": "Create and delete suppressions." }
+  ],
+  "defaultRoles": [
+    {
+      "key": "sender",
+      "name": "Sender",
+      "description": "Role that can send messages, read the own messages, and read templates.",
+      "permissions": ["email:message:send", "email:message:read", "email:template:read"]
+    },
+    {
+      "key": "viewer",
+      "name": "Viewer",
+      "description": "Role that can read messages, templates, sender rules, and suppressions.",
+      "permissions": [
+        "email:message:read",
+        "email:message:read_all",
+        "email:template:read",
+        "email:sender:read",
+        "email:suppression:read"
+      ]
+    },
+    {
+      "key": "admin",
+      "name": "Admin",
+      "description": "Role that has all email permissions.",
+      "permissions": [
+        "email:message:send",
+        "email:message:read",
+        "email:message:read_all",
+        "email:template:read",
+        "email:template:write",
+        "email:sender:read",
+        "email:sender:write",
+        "email:suppression:read",
+        "email:suppression:write"
+      ]
+    }
+  ]
+}

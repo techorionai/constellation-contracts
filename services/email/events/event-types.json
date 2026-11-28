@@ -1,0 +1,32 @@
+[
+  {
+    "type": "email.message.sent",
+    "description": "The service sent a message to the mail system.",
+    "data": "EmailMessageSentData"
+  },
+  {
+    "type": "email.message.failed",
+    "description": "The service could not send a message and does not try again.",
+    "data": "EmailMessageFailedData"
+  },
+  {
+    "type": "email.message.suppressed",
+    "description": "The service did not send to recipients that are on the suppression list.",
+    "data": "EmailMessageSuppressedData"
+  },
+  {
+    "type": "email.message.delivered",
+    "description": "The mail system delivered a message to recipients.",
+    "data": "EmailMessageDeliveredData"
+  },
+  {
+    "type": "email.message.bounced",
+    "description": "The mail system rejected a message for recipients.",
+    "data": "EmailMessageBouncedData"
+  },
+  {
+    "type": "email.message.complained",
+    "description": "Recipients marked a message as unwanted.",
+    "data": "EmailMessageComplainedData"
+  }
+]

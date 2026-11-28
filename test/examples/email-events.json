@@ -1,0 +1,68 @@
+{
+  "EmailMessageSentData": {
+    "valid": [
+      { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 2, "attempt": 1 }
+    ],
+    "invalid": [
+      {
+        "rule": "address property",
+        "value": { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 2, "attempt": 1, "address": "a@example.com" }
+      }
+    ]
+  },
+  "EmailMessageFailedData": {
+    "valid": [
+      { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1, "attempt": 5, "failureCode": "attempts_exhausted" }
+    ],
+    "invalid": [
+      {
+        "rule": "unknown failure code",
+        "value": { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1, "attempt": 5, "failureCode": "unknown" }
+      }
+    ]
+  },
+  "EmailMessageSuppressedData": {
+    "valid": [
+      { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1 }
+    ],
+    "invalid": [
+      {
+        "rule": "zero recipients",
+        "value": { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 0 }
+      }
+    ]
+  },
+  "EmailMessageDeliveredData": {
+    "valid": [
+      { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1 }
+    ],
+    "invalid": [
+      {
+        "rule": "message ID is not a UUID",
+        "value": { "messageId": "abc", "senderApp": "helpdesk", "recipientCount": 1 }
+      }
+    ]
+  },
+  "EmailMessageBouncedData": {
+    "valid": [
+      { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1, "bounceType": "permanent" }
+    ],
+    "invalid": [
+      {
+        "rule": "no bounce type",
+        "value": { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1 }
+      }
+    ]
+  },
+  "EmailMessageComplainedData": {
+    "valid": [
+      { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1 }
+    ],
+    "invalid": [
+      {
+        "rule": "subject property",
+        "value": { "messageId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88", "senderApp": "helpdesk", "recipientCount": 1, "subject": "Hello" }
+      }
+    ]
+  }
+}

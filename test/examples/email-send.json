@@ -1,0 +1,4 @@
+{
+  "template": { "from": "noreply@example.com", "to": ["a@example.com"], "template": { "key": "welcome", "variables": { "name": "Ada" } } },
+  "content": { "from": "noreply@example.com", "to": ["a@example.com"], "content": { "subject": "Hello", "text": "Hello Ada" } }
+}

@@ -1,0 +1,346 @@
+{
+  "app": "email",
+  "eventTypes": [
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventAppKey": {
+            "description": "Key of the app that sent the message.",
+            "maxLength": 32,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `email.message.sent`. The service sent the message to the mail system.\nIt has no address, no subject, and no content.",
+        "properties": {
+          "attempt": {
+            "description": "Number of the send attempt.",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "messageId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the message."
+          },
+          "recipientCount": {
+            "description": "Number of recipients that this event is about.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "senderApp": {
+            "$ref": "#/$defs/EventAppKey",
+            "description": "Key of the app that sent the message."
+          }
+        },
+        "required": [
+          "messageId",
+          "senderApp",
+          "recipientCount",
+          "attempt"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The service sent a message to the mail system.",
+      "type": "email.message.sent"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EmailFailureCode": {
+            "anyOf": [
+              {
+                "const": "permanent_rejection",
+                "type": "string"
+              },
+              {
+                "const": "attempts_exhausted",
+                "type": "string"
+              },
+              {
+                "const": "expired",
+                "type": "string"
+              }
+            ],
+            "description": "Reason why a message failed."
+          },
+          "EventAppKey": {
+            "description": "Key of the app that sent the message.",
+            "maxLength": 32,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `email.message.failed`. The service did not send the message and does not try again.",
+        "properties": {
+          "attempt": {
+            "description": "Number of the last send attempt.",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "failureCode": {
+            "$ref": "#/$defs/EmailFailureCode",
+            "description": "Reason of the failure."
+          },
+          "messageId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the message."
+          },
+          "recipientCount": {
+            "description": "Number of recipients that this event is about.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "senderApp": {
+            "$ref": "#/$defs/EventAppKey",
+            "description": "Key of the app that sent the message."
+          }
+        },
+        "required": [
+          "messageId",
+          "senderApp",
+          "recipientCount",
+          "attempt",
+          "failureCode"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The service could not send a message and does not try again.",
+      "type": "email.message.failed"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventAppKey": {
+            "description": "Key of the app that sent the message.",
+            "maxLength": 32,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `email.message.suppressed`. The service did not send to the recipients because they are on the suppression list.",
+        "properties": {
+          "messageId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the message."
+          },
+          "recipientCount": {
+            "description": "Number of recipients that this event is about.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "senderApp": {
+            "$ref": "#/$defs/EventAppKey",
+            "description": "Key of the app that sent the message."
+          }
+        },
+        "required": [
+          "messageId",
+          "senderApp",
+          "recipientCount"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The service did not send to recipients that are on the suppression list.",
+      "type": "email.message.suppressed"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventAppKey": {
+            "description": "Key of the app that sent the message.",
+            "maxLength": 32,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `email.message.delivered`. The mail system delivered the message.\n`recipientCount` is the number of recipients that this one event is about.\nA notification can be about only some recipients of a message.",
+        "properties": {
+          "messageId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the message."
+          },
+          "recipientCount": {
+            "description": "Number of recipients that this event is about.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "senderApp": {
+            "$ref": "#/$defs/EventAppKey",
+            "description": "Key of the app that sent the message."
+          }
+        },
+        "required": [
+          "messageId",
+          "senderApp",
+          "recipientCount"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The mail system delivered a message to recipients.",
+      "type": "email.message.delivered"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EmailBounceType": {
+            "anyOf": [
+              {
+                "const": "permanent",
+                "type": "string"
+              },
+              {
+                "const": "transient",
+                "type": "string"
+              },
+              {
+                "const": "undetermined",
+                "type": "string"
+              }
+            ],
+            "description": "Type of a bounce. `permanent` is a rejection of the 5xx class.\n`transient` is a rejection of the 4xx class. `undetermined` is a rejection with no known class."
+          },
+          "EventAppKey": {
+            "description": "Key of the app that sent the message.",
+            "maxLength": 32,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `email.message.bounced`. The mail system rejected the message.\n`bounceType` is `permanent` for a rejection of the 5xx class, `transient` for the 4xx class,\nand `undetermined` for a rejection with no known class.",
+        "properties": {
+          "bounceType": {
+            "$ref": "#/$defs/EmailBounceType",
+            "description": "Type of the bounce."
+          },
+          "messageId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the message."
+          },
+          "recipientCount": {
+            "description": "Number of recipients that this event is about.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "senderApp": {
+            "$ref": "#/$defs/EventAppKey",
+            "description": "Key of the app that sent the message."
+          }
+        },
+        "required": [
+          "messageId",
+          "senderApp",
+          "recipientCount",
+          "bounceType"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The mail system rejected a message for recipients.",
+      "type": "email.message.bounced"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventAppKey": {
+            "description": "Key of the app that sent the message.",
+            "maxLength": 32,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string"
+          },
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `email.message.complained`. A recipient marked the message as unwanted.",
+        "properties": {
+          "messageId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the message."
+          },
+          "recipientCount": {
+            "description": "Number of recipients that this event is about.",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "senderApp": {
+            "$ref": "#/$defs/EventAppKey",
+            "description": "Key of the app that sent the message."
+          }
+        },
+        "required": [
+          "messageId",
+          "senderApp",
+          "recipientCount"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "Recipients marked a message as unwanted.",
+      "type": "email.message.complained"
+    }
+  ],
+  "source": "/email"
+}
