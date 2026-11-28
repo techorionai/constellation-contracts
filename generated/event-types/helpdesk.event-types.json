@@ -1,0 +1,313 @@
+{
+  "app": "helpdesk",
+  "eventTypes": [
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "TicketPriority": {
+            "anyOf": [
+              {
+                "const": "low",
+                "type": "string"
+              },
+              {
+                "const": "normal",
+                "type": "string"
+              },
+              {
+                "const": "high",
+                "type": "string"
+              },
+              {
+                "const": "urgent",
+                "type": "string"
+              }
+            ],
+            "description": "Priority of a ticket."
+          },
+          "TicketStatus": {
+            "anyOf": [
+              {
+                "const": "open",
+                "type": "string"
+              },
+              {
+                "const": "pending",
+                "type": "string"
+              },
+              {
+                "const": "resolved",
+                "type": "string"
+              },
+              {
+                "const": "closed",
+                "type": "string"
+              }
+            ],
+            "description": "Status of a ticket."
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `helpdesk.ticket.created`. It has no free text and no personal data.",
+        "properties": {
+          "customerId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the customer of the ticket."
+          },
+          "number": {
+            "description": "Number of the ticket.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "priority": {
+            "$ref": "#/$defs/TicketPriority",
+            "description": "Priority of the ticket."
+          },
+          "status": {
+            "$ref": "#/$defs/TicketStatus",
+            "description": "Status of the ticket."
+          },
+          "ticketId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the ticket."
+          }
+        },
+        "required": [
+          "ticketId",
+          "number",
+          "status",
+          "priority",
+          "customerId"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "A ticket was created.",
+      "type": "helpdesk.ticket.created"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "TicketChangedField": {
+            "anyOf": [
+              {
+                "const": "subject",
+                "type": "string"
+              },
+              {
+                "const": "description",
+                "type": "string"
+              },
+              {
+                "const": "priority",
+                "type": "string"
+              }
+            ],
+            "description": "Fields of a ticket that the event `helpdesk.ticket.updated` can name."
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `helpdesk.ticket.updated`. It names the changed fields. It does not give their values.",
+        "properties": {
+          "changedFields": {
+            "description": "Names of the fields that changed.",
+            "items": {
+              "$ref": "#/$defs/TicketChangedField"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "number": {
+            "description": "Number of the ticket.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ticketId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the ticket."
+          }
+        },
+        "required": [
+          "ticketId",
+          "number",
+          "changedFields"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The subject, the description, or the priority of a ticket changed.",
+      "type": "helpdesk.ticket.updated"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          },
+          "TicketStatus": {
+            "anyOf": [
+              {
+                "const": "open",
+                "type": "string"
+              },
+              {
+                "const": "pending",
+                "type": "string"
+              },
+              {
+                "const": "resolved",
+                "type": "string"
+              },
+              {
+                "const": "closed",
+                "type": "string"
+              }
+            ],
+            "description": "Status of a ticket."
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `helpdesk.ticket.status_changed`.",
+        "properties": {
+          "from": {
+            "$ref": "#/$defs/TicketStatus",
+            "description": "Status before the change."
+          },
+          "number": {
+            "description": "Number of the ticket.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ticketId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the ticket."
+          },
+          "to": {
+            "$ref": "#/$defs/TicketStatus",
+            "description": "Status after the change."
+          }
+        },
+        "required": [
+          "ticketId",
+          "number",
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The status of a ticket changed.",
+      "type": "helpdesk.ticket.status_changed"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `helpdesk.customer.created`. It has no personal data.",
+        "properties": {
+          "customerId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the customer."
+          }
+        },
+        "required": [
+          "customerId"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "A customer was created.",
+      "type": "helpdesk.customer.created"
+    },
+    {
+      "dataSchema": {
+        "$defs": {
+          "CustomerChangedField": {
+            "anyOf": [
+              {
+                "const": "name",
+                "type": "string"
+              },
+              {
+                "const": "email",
+                "type": "string"
+              },
+              {
+                "const": "phone",
+                "type": "string"
+              }
+            ],
+            "description": "Fields of a customer that the event `helpdesk.customer.updated` can name."
+          },
+          "EventResourceId": {
+            "description": "A UUID in lowercase text form. The pattern is RE2 syntax.",
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+            "type": "string"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Data of the event `helpdesk.customer.updated`. It names the changed fields. It does not give their values.",
+        "properties": {
+          "changedFields": {
+            "description": "Names of the fields that changed.",
+            "items": {
+              "$ref": "#/$defs/CustomerChangedField"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "customerId": {
+            "$ref": "#/$defs/EventResourceId",
+            "description": "ID of the customer."
+          }
+        },
+        "required": [
+          "customerId",
+          "changedFields"
+        ],
+        "type": "object",
+        "unevaluatedProperties": {
+          "not": {}
+        }
+      },
+      "description": "The name, the email address, or the phone number of a customer changed.",
+      "type": "helpdesk.customer.updated"
+    }
+  ],
+  "source": "/helpdesk"
+}

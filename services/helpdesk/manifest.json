@@ -1,0 +1,28 @@
+{
+  "app": "helpdesk",
+  "permissions": [
+    { "key": "helpdesk:ticket:read", "description": "List and read tickets." },
+    { "key": "helpdesk:ticket:write", "description": "Create and change tickets." },
+    { "key": "helpdesk:customer:read", "description": "List and read customers." },
+    { "key": "helpdesk:customer:write", "description": "Create and change customers." }
+  ],
+  "defaultRoles": [
+    {
+      "key": "support_agent",
+      "name": "Support agent",
+      "description": "Role that can read and write tickets and customers.",
+      "permissions": [
+        "helpdesk:ticket:read",
+        "helpdesk:ticket:write",
+        "helpdesk:customer:read",
+        "helpdesk:customer:write"
+      ]
+    },
+    {
+      "key": "viewer",
+      "name": "Viewer",
+      "description": "Role that can read tickets and customers.",
+      "permissions": ["helpdesk:ticket:read", "helpdesk:customer:read"]
+    }
+  ]
+}

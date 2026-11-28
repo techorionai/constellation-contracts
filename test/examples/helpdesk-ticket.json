@@ -1,0 +1,66 @@
+{
+  "valid": [
+    {
+      "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+      "number": 42,
+      "subject": "Printer is broken",
+      "description": "The printer on floor 2 does not print.",
+      "status": "open",
+      "priority": "normal",
+      "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+      "createdAt": "2026-11-27T10:15:00Z",
+      "updatedAt": "2026-11-27T10:15:00Z"
+    },
+    {
+      "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a90",
+      "number": 43,
+      "subject": "Question",
+      "status": "closed",
+      "priority": "urgent",
+      "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+      "createdAt": "2026-11-27T10:15:00Z",
+      "updatedAt": "2026-11-27T11:00:00Z"
+    }
+  ],
+  "invalid": [
+    {
+      "field": "subject",
+      "value": {
+        "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+        "number": 42,
+        "subject": "SUBJECT201",
+        "status": "open",
+        "priority": "normal",
+        "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+        "createdAt": "2026-11-27T10:15:00Z",
+        "updatedAt": "2026-11-27T10:15:00Z"
+      }
+    },
+    {
+      "field": "status",
+      "value": {
+        "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+        "number": 42,
+        "subject": "Printer is broken",
+        "status": "done",
+        "priority": "normal",
+        "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+        "createdAt": "2026-11-27T10:15:00Z",
+        "updatedAt": "2026-11-27T10:15:00Z"
+      }
+    },
+    {
+      "field": "number",
+      "value": {
+        "id": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+        "number": 0,
+        "subject": "Printer is broken",
+        "status": "open",
+        "priority": "normal",
+        "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+        "createdAt": "2026-11-27T10:15:00Z",
+        "updatedAt": "2026-11-27T10:15:00Z"
+      }
+    }
+  ]
+}

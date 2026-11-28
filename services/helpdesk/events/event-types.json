@@ -1,0 +1,27 @@
+[
+  {
+    "type": "helpdesk.ticket.created",
+    "description": "A ticket was created.",
+    "data": "TicketCreatedData"
+  },
+  {
+    "type": "helpdesk.ticket.updated",
+    "description": "The subject, the description, or the priority of a ticket changed.",
+    "data": "TicketUpdatedData"
+  },
+  {
+    "type": "helpdesk.ticket.status_changed",
+    "description": "The status of a ticket changed.",
+    "data": "TicketStatusChangedData"
+  },
+  {
+    "type": "helpdesk.customer.created",
+    "description": "A customer was created.",
+    "data": "CustomerCreatedData"
+  },
+  {
+    "type": "helpdesk.customer.updated",
+    "description": "The name, the email address, or the phone number of a customer changed.",
+    "data": "CustomerUpdatedData"
+  }
+]
