@@ -3,6 +3,7 @@ entrypoint: main.tsp
 warn-as-error: true
 emit:
   - "@typespec/openapi3"
+  - "@typespec/json-schema"
 options:
   "@typespec/openapi3":
     emitter-output-dir: "{project-root}/generated/openapi"
@@ -10,6 +11,11 @@ options:
     file-type: yaml
     output-file: "{service-name}.openapi.yaml"
     new-line: lf
+  "@typespec/json-schema":
+    emitter-output-dir: "{output-dir}/json-schema"
+    file-type: json
+    int64-strategy: number
+    seal-object-schemas: true
 linter:
   extends:
     - "@typespec/http/all"

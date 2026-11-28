@@ -25,7 +25,7 @@ export interface CompileResult {
 
 /**
  * Compile a TypeSpec entry point with the options of tspconfig.yaml.
- * The OpenAPI files go to a temporary folder. Warnings are errors.
+ * The OpenAPI files and the JSON Schema files go to a temporary folder. Warnings are errors.
  */
 export async function compileEntry(
   entrypoint: string,
@@ -40,7 +40,13 @@ export async function compileEntry(
   try {
     const emitter = options.options?.["@typespec/openapi3"] ?? {};
     emitter["emitter-output-dir"] = outDir;
-    options.options = { ...options.options, "@typespec/openapi3": emitter };
+    const jsonSchema = options.options?.["@typespec/json-schema"] ?? {};
+    jsonSchema["emitter-output-dir"] = join(outDir, "json-schema");
+    options.options = {
+      ...options.options,
+      "@typespec/openapi3": emitter,
+      "@typespec/json-schema": jsonSchema,
+    };
     options.noEmit = !emit;
     options.warningAsError = true;
     const program = await compile(NodeHost, entrypoint, options);
@@ -50,6 +56,7 @@ export async function compileEntry(
     const files: Record<string, Doc> = {};
     if (emit) {
       for (const name of await readdir(outDir)) {
+        if (name === "json-schema") continue;
         files[name] = parse(await readFile(join(outDir, name), "utf8"));
       }
     }
