@@ -11,7 +11,7 @@ union SenderRuleKind {
 }
 
 /**
- * The domain or the address of a sender rule. The value is in lower case.
+ * The domain or the address of a sender rule. The service changes the value to lower case before it checks and stores it.
  * A rule of the kind `domain` has a domain with no `@`, for example `example.com`.
  * A rule of the kind `address` has a full address, for example `noreply@example.com`.
  * The service gives 422 `validation_failed` when the value does not agree with the kind.
@@ -19,7 +19,7 @@ union SenderRuleKind {
 @friendlyName("SenderRuleValue")
 @minLength(3)
 @maxLength(254)
-@pattern("^([a-z0-9._%+-]+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
+@pattern("^([A-Za-z0-9._%+-]+@)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$")
 scalar SenderRuleValue extends string;
 
 /** A rule that lets an app send from a domain or from an address. */
@@ -34,7 +34,7 @@ model SenderRule {
   /** Kind of the rule. */
   kind: SenderRuleKind;
 
-  /** The domain or the address. Lower case only. */
+  /** The domain or the address. */
   value: SenderRuleValue;
 
   /** Time when the rule was created. */
@@ -50,7 +50,7 @@ model SenderRuleCreate {
   /** Kind of the rule. */
   kind: SenderRuleKind;
 
-  /** The domain or the address. Lower case only. */
+  /** The domain or the address. */
   value: SenderRuleValue;
 }
 

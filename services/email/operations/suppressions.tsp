@@ -39,7 +39,7 @@ interface Suppressions {
 
   /**
    * Create a manual suppression. The reason is `manual`.
-   * The operation writes an audit entry with the action `email:suppression:create` and the result. The entry does not have the address in clear text.
+   * The operation writes an audit entry with the action `email:suppression:create`, the ID of the suppression, and the result. The entry does not have the address in clear text.
    * Error code of `Conflict`: `suppression_exists`. Error code of `UnprocessableContent`: `validation_failed`.
    * Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
    * Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -55,7 +55,7 @@ interface Suppressions {
 
   /**
    * Delete a suppression of any reason. Error code of `NotFound`: `suppression_not_found`.
-   * The operation writes an audit entry with the action `email:suppression:delete`, the reason of the deleted suppression, and the result. The entry does not have the address in clear text.
+   * The operation writes an audit entry with the action `email:suppression:delete`, the ID and the reason of the deleted suppression, and the result. The entry does not have the address in clear text.
    * Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
    * Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
    */

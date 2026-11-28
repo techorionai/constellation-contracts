@@ -319,9 +319,9 @@ describe("email service contract", () => {
   // U17
   it("U17: sender rule value, template html clear, and recipients limit", () => {
     const rule = check("SenderRuleCreate");
-    const ok = ["example.com", "mail.example.com", "noreply@example.com", "a+b@example.com"];
+    const ok = ["Example.com", "example.com", "mail.example.com", "noreply@example.com", "a+b@example.com"];
     for (const value of ok) expect(rule({ app: "helpdesk", kind: "domain", value }), value).toBe(true);
-    const bad = ["Example.com", "example", "a b@example.com", "x@example.com\n", "@example.com", ".example.com"];
+    const bad = ["example", "a b@example.com", "x@example.com\n", "@example.com", ".example.com"];
     for (const value of bad) expect(rule({ app: "helpdesk", kind: "domain", value }), value).toBe(false);
     const create = byId["SenderRules_create"].op.description;
     expect(create).toContain("no subdomain match and no suffix match");

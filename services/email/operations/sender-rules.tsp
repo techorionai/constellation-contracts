@@ -26,7 +26,7 @@ interface SenderRules {
    * A rule of the kind `address` matches when the full `from` address is equal to the value.
    * A rule of the kind `domain` matches when the domain part of `from` (the text after the last `@`) is equal to the value.
    * A domain rule has no subdomain match and no suffix match. The rule `example.com` does not permit `mail.example.com` or `evilexample.com`.
-   * The operation writes an audit entry with the action `email:sender_rule:create`, the app, the kind, the value, and the result.
+   * The operation writes an audit entry with the action `email:sender_rule:create`, the app, the kind, and the result. The entry has the value only when the kind is `domain`, because an address is personal data.
    * Error code of `Conflict`: `sender_rule_exists`. Error code of `UnprocessableContent`: `validation_failed`.
    * Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
    * Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -42,7 +42,7 @@ interface SenderRules {
 
   /**
    * Delete a sender rule. Error code of `NotFound`: `sender_rule_not_found`.
-   * The operation writes an audit entry with the action `email:sender_rule:delete`, the app, the kind, the value, and the result.
+   * The operation writes an audit entry with the action `email:sender_rule:delete`, the app, the kind, and the result. The entry has the value only when the kind is `domain`, because an address is personal data.
    * Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
    * Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
    */

@@ -755,7 +755,7 @@ paths:
         A rule of the kind `address` matches when the full `from` address is equal to the value.
         A rule of the kind `domain` matches when the domain part of `from` (the text after the last `@`) is equal to the value.
         A domain rule has no subdomain match and no suffix match. The rule `example.com` does not permit `mail.example.com` or `evilexample.com`.
-        The operation writes an audit entry with the action `email:sender_rule:create`, the app, the kind, the value, and the result.
+        The operation writes an audit entry with the action `email:sender_rule:create`, the app, the kind, and the result. The entry has the value only when the kind is `domain`, because an address is personal data.
         Error code of `Conflict`: `sender_rule_exists`. Error code of `UnprocessableContent`: `validation_failed`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -977,7 +977,7 @@ paths:
       operationId: SenderRules_delete
       description: |-
         Delete a sender rule. Error code of `NotFound`: `sender_rule_not_found`.
-        The operation writes an audit entry with the action `email:sender_rule:delete`, the app, the kind, the value, and the result.
+        The operation writes an audit entry with the action `email:sender_rule:delete`, the app, the kind, and the result. The entry has the value only when the kind is `domain`, because an address is personal data.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
@@ -1321,7 +1321,7 @@ paths:
       operationId: Suppressions_create
       description: |-
         Create a manual suppression. The reason is `manual`.
-        The operation writes an audit entry with the action `email:suppression:create` and the result. The entry does not have the address in clear text.
+        The operation writes an audit entry with the action `email:suppression:create`, the ID of the suppression, and the result. The entry does not have the address in clear text.
         Error code of `Conflict`: `suppression_exists`. Error code of `UnprocessableContent`: `validation_failed`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -1543,7 +1543,7 @@ paths:
       operationId: Suppressions_delete
       description: |-
         Delete a suppression of any reason. Error code of `NotFound`: `suppression_not_found`.
-        The operation writes an audit entry with the action `email:suppression:delete`, the reason of the deleted suppression, and the result. The entry does not have the address in clear text.
+        The operation writes an audit entry with the action `email:suppression:delete`, the ID and the reason of the deleted suppression, and the result. The entry does not have the address in clear text.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
@@ -2479,7 +2479,7 @@ paths:
       description: |-
         Change a template. A field that is not in the body does not change. The key does not change.
         A body with no field gives 400 `empty_update`. An empty string for `html` removes the HTML template.
-        The operation writes an audit entry with the action `email:template:update`, the ID of the template, and the result.
+        The operation writes an audit entry with the action `email:template:update`, the ID of the template, the names of the changed fields, and the result.
         Error code of `NotFound`: `template_not_found`. Error code of `UnprocessableContent`: `template_syntax_invalid` or `validation_failed`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -4472,7 +4472,7 @@ components:
         value:
           allOf:
             - $ref: '#/components/schemas/SenderRuleValue'
-          description: The domain or the address. Lower case only.
+          description: The domain or the address.
         createdAt:
           type: string
           format: date-time
@@ -4496,7 +4496,7 @@ components:
         value:
           allOf:
             - $ref: '#/components/schemas/SenderRuleValue'
-          description: The domain or the address. Lower case only.
+          description: The domain or the address.
       description: Request to create a sender rule.
     SenderRuleKind:
       type: string
@@ -4522,9 +4522,9 @@ components:
       type: string
       minLength: 3
       maxLength: 254
-      pattern: ^([a-z0-9._%+-]+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$
+      pattern: ^([A-Za-z0-9._%+-]+@)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$
       description: |-
-        The domain or the address of a sender rule. The value is in lower case.
+        The domain or the address of a sender rule. The service changes the value to lower case before it checks and stores it.
         A rule of the kind `domain` has a domain with no `@`, for example `example.com`.
         A rule of the kind `address` has a full address, for example `noreply@example.com`.
         The service gives 422 `validation_failed` when the value does not agree with the kind.
