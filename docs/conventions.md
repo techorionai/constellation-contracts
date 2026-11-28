@@ -62,7 +62,7 @@ services/<service>/
 |---- events/                  Only if the service publishes events
 |------- main.tsp
 |------- <resource>.tsp        The event data models of one resource, and the named CloudEvent models
-|---- permissions.tsp          Only if the service has permissions. The permission keys and the default roles.
+|---- manifest.json            Only if the service has permissions. The permission keys and the default roles.
 ```
 
 Example of a service entry point:
@@ -335,6 +335,17 @@ Rules for the content of an error:
 - A new public operation must declare 429.
 - A concurrency limit of one operation can use its own `Problem` code, for example `too_many_exports`. It has the required `Retry-After` and the other rules of this section.
 - The 429 or 503 status, the body (`detail`, `error_description`), and `Retry-After` do not change when a `client_id` or a user exists or does not exist. The response does not give the limit key, the limit value, or the remaining requests.
+
+## Idempotency-Key
+
+An operation that sends a message can accept the optional request header `Idempotency-Key`. The email operation `Messages_send` is the first one. Another service can use the same rules.
+
+- The key has 1 to 255 printable ASCII characters.
+- The scope of a key is the caller app. The service keeps a key for 24 hours.
+- The same key with the same body returns the first result with the first status code.
+- The same key with a different body gives 422 `idempotency_key_reused`.
+- A retry with the same key while the first request is in progress gives 409 `idempotency_request_in_progress` with `Retry-After`.
+- The header model is in the `models/shared.tsp` file of the service. It is not in `lib/`.
 
 ## Pagination
 
