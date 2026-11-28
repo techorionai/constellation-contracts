@@ -13,12 +13,14 @@ interface Messages {
    * or `suppressed` when all recipients are on the suppression list. The caller reads the status later or from the events.
    * Limits: `to` has 1 to 50 addresses. The total of `to`, `cc`, and `bcc` is a maximum of 50 addresses.
    * A schema cannot count 3 arrays, so the service checks the total and gives 422 `validation_failed`.
-   * The service also gives 422 `validation_failed` for more than 50 template variables.
+   * The service also gives 422 `validation_failed` for more than 50 template variables, and for a variable name that does not match the name rule.
+   * The service gives 422 `validation_failed` for CR, LF, or another control character in `from`, `fromName`, an address, the subject, `inReplyTo`, or an item of `references`.
+   * The service checks the rendered subject of a template too.
    * The body has a maximum of 2 MiB. A larger body gives 413 `content_too_large`.
    * The header `Idempotency-Key` is optional. The service keeps a key for each caller app for 24 hours.
    * The same key with the same body returns the first `Message` with 202.
    * The same key with a different body gives 422 `idempotency_key_reused`.
-   * A retry with the same key while the first request is in progress gives 409 `idempotency_request_in_progress` with `Retry-After`.
+   * A retry with the same key while the first request is in progress gives 409 `idempotency_request_in_progress`. The response always has `Retry-After`.
    * A principal with no `app` claim gives 422 `sender_not_allowed`. A `from` address that no sender rule of the caller app allows also gives 422 `sender_not_allowed`.
    * Other codes of `UnprocessableContent`: `template_not_found`, `template_variables_invalid`.
    * Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
@@ -28,7 +30,7 @@ interface Messages {
   @post
   send(...IdempotencyKeyHeader, @body request: SendMessageRequest):
     | EmailAccepted<Message>
-    | EmailConflict
+    | EmailRequestInProgress
     | EmailContentTooLarge
     | EmailUnprocessableContent
     | EmailTooManyRequests

@@ -1,4 +1,5 @@
 import "@typespec/openapi3";
+import "@typespec/json-schema";
 
 using TypeSpec.OpenAPI;
 
@@ -10,10 +11,8 @@ model SendMessageFields {
   /** Address of the sender. A sender rule of the caller app must allow it. */
   from: EmailAddress;
 
-  /** Display name of the sender. */
-  @minLength(1)
-  @maxLength(100)
-  fromName?: string;
+  /** Display name of the sender. A maximum of 100 characters. It has no control character. */
+  fromName?: SenderDisplayName;
 
   /** Recipients. */
   @minItems(1)
@@ -42,13 +41,11 @@ model SendMessageFields {
 @friendlyName("MessageThreading")
 model MessageThreading {
   /** Message ID of the message that this message answers. */
-  @minLength(1)
-  @maxLength(998)
-  inReplyTo?: string;
+  inReplyTo?: MessageIdText;
 
   /** Message IDs of the thread. */
   @maxItems(100)
-  references?: string[];
+  references?: MessageIdText[];
 }
 
 /** A template and its variables for a send request. */
@@ -58,17 +55,21 @@ model TemplateReference {
   @pattern("^[a-z][a-z0-9_.-]{0,63}$")
   key: string;
 
-  /** Values of the variables. The key is a variable name. A maximum of 50 variables. Each value has a maximum of 10000 characters. */
-  variables: Record<string>;
+  /**
+   * Values of the variables. The key is a variable name.
+   * A name matches `^[A-Za-z][A-Za-z0-9_]{0,63}$`. The service gives 422 `validation_failed` for another name.
+   * A maximum of 50 variables. Each value has a maximum of 10000 characters.
+   * The field is required. A template with no variables needs `{}`.
+   */
+  @JsonSchema.maxProperties(50)
+  variables: Record<TemplateVariableValue>;
 }
 
 /** Message content that the caller gives. */
 @friendlyName("MessageContent")
 model MessageContent {
-  /** Subject. */
-  @minLength(1)
-  @maxLength(998)
-  subject: string;
+  /** Subject. It has no control character. */
+  subject: HeaderText;
 
   /** Text body. A maximum of 1 MiB. */
   @minLength(1)

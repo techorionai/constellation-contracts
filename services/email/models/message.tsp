@@ -73,6 +73,7 @@ model Message {
   from: EmailAddress;
 
   /** Recipients of the message. */
+  @maxItems(50)
   recipients: MessageRecipient[];
 
   /** Key of the template. Only if the message used a template. */

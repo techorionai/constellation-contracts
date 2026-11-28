@@ -38,17 +38,25 @@ model EmailNotFound {
   ...EmailNoStoreHeaders;
 }
 
-/** The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header. */
+/** The request conflicts with the state of the resource. The response has the no-store headers. */
 @error
 @friendlyName("EmailConflict")
 model EmailConflict {
   ...Conflict;
   ...EmailNoStoreHeaders;
+}
 
-  /** Seconds to wait before the next request. Optional. */
+/** A request with the same idempotency key is in progress. The response has the no-store headers. It always has the Retry-After header. */
+@error
+@friendlyName("EmailRequestInProgress")
+model EmailRequestInProgress {
+  ...Conflict;
+  ...EmailNoStoreHeaders;
+
+  /** Seconds to wait before the next request. */
   @minValue(0)
   @header("Retry-After")
-  retryAfter?: int32;
+  retryAfter: int32;
 }
 
 /** The request body is too large. The response has the no-store headers. */

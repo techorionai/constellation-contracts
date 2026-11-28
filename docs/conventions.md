@@ -62,7 +62,7 @@ services/<service>/
 |---- events/                  Only if the service publishes events
 |------- main.tsp
 |------- <resource>.tsp        The event data models of one resource, and the named CloudEvent models
-|---- manifest.json             Only if the service has permissions. The permission keys and the default roles.
+|---- manifest.json            Only if the service has permissions. The permission keys and the default roles.
 ```
 
 Example of a service entry point:

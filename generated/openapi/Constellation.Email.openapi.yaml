@@ -18,12 +18,14 @@ paths:
         or `suppressed` when all recipients are on the suppression list. The caller reads the status later or from the events.
         Limits: `to` has 1 to 50 addresses. The total of `to`, `cc`, and `bcc` is a maximum of 50 addresses.
         A schema cannot count 3 arrays, so the service checks the total and gives 422 `validation_failed`.
-        The service also gives 422 `validation_failed` for more than 50 template variables.
+        The service also gives 422 `validation_failed` for more than 50 template variables, and for a variable name that does not match the name rule.
+        The service gives 422 `validation_failed` for CR, LF, or another control character in `from`, `fromName`, an address, the subject, `inReplyTo`, or an item of `references`.
+        The service checks the rendered subject of a template too.
         The body has a maximum of 2 MiB. A larger body gives 413 `content_too_large`.
         The header `Idempotency-Key` is optional. The service keeps a key for each caller app for 24 hours.
         The same key with the same body returns the first `Message` with 202.
         The same key with a different body gives 422 `idempotency_key_reused`.
-        A retry with the same key while the first request is in progress gives 409 `idempotency_request_in_progress` with `Retry-After`.
+        A retry with the same key while the first request is in progress gives 409 `idempotency_request_in_progress`. The response always has `Retry-After`.
         A principal with no `app` claim gives 422 `sender_not_allowed`. A `from` address that no sender rule of the caller app allows also gives 422 `sender_not_allowed`.
         Other codes of `UnprocessableContent`: `template_not_found`, `template_variables_invalid`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
@@ -116,7 +118,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmailForbidden'
         '409':
-          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          description: A request with the same idempotency key is in progress. The response has the no-store headers. It always has the Retry-After header.
           headers:
             Cache-Control:
               required: true
@@ -133,8 +135,8 @@ paths:
                 enum:
                   - no-cache
             Retry-After:
-              required: false
-              description: Seconds to wait before the next request. Optional.
+              required: true
+              description: Seconds to wait before the next request.
               schema:
                 type: integer
                 format: int32
@@ -142,7 +144,7 @@ paths:
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/EmailConflict'
+                $ref: '#/components/schemas/EmailRequestInProgress'
         '413':
           description: The request body is too large. The response has the no-store headers.
           headers:
@@ -749,6 +751,11 @@ paths:
       operationId: SenderRules_create
       description: |-
         Create a sender rule. The service permits a `from` address when a rule of the caller app has the same address, or the same domain.
+        The match is exact and has no case. The service changes the `from` address to lower case first.
+        A rule of the kind `address` matches when the full `from` address is equal to the value.
+        A rule of the kind `domain` matches when the domain part of `from` (the text after the last `@`) is equal to the value.
+        A domain rule has no subdomain match and no suffix match. The rule `example.com` does not permit `mail.example.com` or `evilexample.com`.
+        The operation writes an audit entry with the action `email:sender_rule:create`, the app, the kind, the value, and the result.
         Error code of `Conflict`: `sender_rule_exists`. Error code of `UnprocessableContent`: `validation_failed`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -839,7 +846,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmailForbidden'
         '409':
-          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          description: The request conflicts with the state of the resource. The response has the no-store headers.
           headers:
             Cache-Control:
               required: true
@@ -855,13 +862,6 @@ paths:
                 type: string
                 enum:
                   - no-cache
-            Retry-After:
-              required: false
-              description: Seconds to wait before the next request. Optional.
-              schema:
-                type: integer
-                format: int32
-                minimum: 0
           content:
             application/problem+json:
               schema:
@@ -977,6 +977,7 @@ paths:
       operationId: SenderRules_delete
       description: |-
         Delete a sender rule. Error code of `NotFound`: `sender_rule_not_found`.
+        The operation writes an audit entry with the action `email:sender_rule:delete`, the app, the kind, the value, and the result.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
@@ -1320,6 +1321,7 @@ paths:
       operationId: Suppressions_create
       description: |-
         Create a manual suppression. The reason is `manual`.
+        The operation writes an audit entry with the action `email:suppression:create` and the result. The entry does not have the address in clear text.
         Error code of `Conflict`: `suppression_exists`. Error code of `UnprocessableContent`: `validation_failed`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -1410,7 +1412,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmailForbidden'
         '409':
-          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          description: The request conflicts with the state of the resource. The response has the no-store headers.
           headers:
             Cache-Control:
               required: true
@@ -1426,13 +1428,6 @@ paths:
                 type: string
                 enum:
                   - no-cache
-            Retry-After:
-              required: false
-              description: Seconds to wait before the next request. Optional.
-              schema:
-                type: integer
-                format: int32
-                minimum: 0
           content:
             application/problem+json:
               schema:
@@ -1548,6 +1543,7 @@ paths:
       operationId: Suppressions_delete
       description: |-
         Delete a suppression of any reason. Error code of `NotFound`: `suppression_not_found`.
+        The operation writes an audit entry with the action `email:suppression:delete`, the reason of the deleted suppression, and the result. The entry does not have the address in clear text.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
@@ -1854,6 +1850,34 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/EmailNotFound'
+        '429':
+          description: The client sent too many requests. The response has the no-store headers.
+          headers:
+            Retry-After:
+              required: true
+              description: Seconds to wait before the next request.
+              schema:
+                type: integer
+                format: int32
+                minimum: 0
+            Cache-Control:
+              required: true
+              description: Cache rule.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Pragma:
+              required: true
+              description: Cache rule for old HTTP/1.0 caches.
+              schema:
+                type: string
+                enum:
+                  - no-cache
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/EmailTooManyRequests'
         '500':
           description: The service has an internal error. The response has the no-store headers.
           headers:
@@ -2062,6 +2086,7 @@ paths:
       operationId: Templates_create
       description: |-
         Create a template. The subject, the text, and the HTML use Go template syntax.
+        The operation writes an audit entry with the action `email:template:create`, the key of the template, and the result.
         Error code of `Conflict`: `template_key_taken`. Error code of `UnprocessableContent`: `template_syntax_invalid` for a bad template, or `validation_failed`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -2152,7 +2177,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmailForbidden'
         '409':
-          description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+          description: The request conflicts with the state of the resource. The response has the no-store headers.
           headers:
             Cache-Control:
               required: true
@@ -2168,13 +2193,6 @@ paths:
                 type: string
                 enum:
                   - no-cache
-            Retry-After:
-              required: false
-              description: Seconds to wait before the next request. Optional.
-              schema:
-                type: integer
-                format: int32
-                minimum: 0
           content:
             application/problem+json:
               schema:
@@ -2460,7 +2478,8 @@ paths:
       operationId: Templates_update
       description: |-
         Change a template. A field that is not in the body does not change. The key does not change.
-        A body with no field gives 400 `empty_update`.
+        A body with no field gives 400 `empty_update`. An empty string for `html` removes the HTML template.
+        The operation writes an audit entry with the action `email:template:update`, the ID of the template, and the result.
         Error code of `NotFound`: `template_not_found`. Error code of `UnprocessableContent`: `template_syntax_invalid` or `validation_failed`.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
@@ -2687,6 +2706,7 @@ paths:
       operationId: Templates_delete
       description: |-
         Delete a template. Error code of `NotFound`: `template_not_found`.
+        The operation writes an audit entry with the action `email:template:delete`, the ID and the key of the template, and the result.
         Each response, also an error response, has `Cache-Control: no-store` and `Pragma: no-cache`.
         Error code of `ServiceUnavailable`: `unavailable`. It has `Retry-After` when the database is not available.
       parameters:
@@ -2972,10 +2992,9 @@ components:
             - $ref: '#/components/schemas/EmailAddress'
           description: Address of the sender. A sender rule of the caller app must allow it.
         fromName:
-          type: string
-          minLength: 1
-          maxLength: 100
-          description: Display name of the sender.
+          allOf:
+            - $ref: '#/components/schemas/SenderDisplayName'
+          description: Display name of the sender. A maximum of 100 characters. It has no control character.
         to:
           type: array
           items:
@@ -3016,9 +3035,11 @@ components:
       type: string
       minLength: 3
       maxLength: 254
+      pattern: ^[^\x00-\x20\x7F]+$
       description: |-
-        An email address. The contract checks only the length.
+        An email address. The contract checks the length and that the address has no control character and no space.
         The service checks the form of the address.
+        The service gives 422 `validation_failed` for an address with CR, LF, or another control character.
     EmailBadRequest:
       type: object
       required:
@@ -3111,7 +3132,7 @@ components:
           items:
             $ref: '#/components/schemas/FieldError'
           description: Field errors. Only for validation errors.
-      description: The request conflicts with the state of the resource. The response has the no-store headers. It has an optional Retry-After header.
+      description: The request conflicts with the state of the resource. The response has the no-store headers.
     EmailContentTooLarge:
       type: object
       required:
@@ -3922,6 +3943,48 @@ components:
             $ref: '#/components/schemas/FieldError'
           description: Field errors. Only for validation errors.
       description: The resource does not exist. The response has the no-store headers.
+    EmailRequestInProgress:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference that identifies the problem type.
+          default: about:blank
+        title:
+          type: string
+          description: Short summary of the problem. It contains no internal data.
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation of this occurrence of the problem. It contains no internal data.
+        instance:
+          type: string
+          description: URI reference of this occurrence. It contains no personal data and no secret.
+        code:
+          type: string
+          maxLength: 64
+          description: Stable code that a machine can read, for example `ticket_not_found`.
+        requestId:
+          type: string
+          description: ID of the request. An operator uses it to find the error in the logs.
+        traceId:
+          type: string
+          description: ID of the trace. An operator uses it to find the error in the traces.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Field errors. Only for validation errors.
+      description: A request with the same idempotency key is in progress. The response has the no-store headers. It always has the Retry-After header.
     EmailServiceUnavailable:
       type: object
       required:
@@ -4122,6 +4185,16 @@ components:
           type: string
           description: Message for a person.
       description: One incorrect field of a request.
+    HeaderText:
+      type: string
+      minLength: 1
+      maxLength: 998
+      pattern: ^[^\x00-\x1F\x7F]+$
+      description: |-
+        Text that the service writes into a mail header, for example a display name or a subject.
+        The text has no control character. This includes CR and LF.
+        The service gives 422 `validation_failed` for a value with CR, LF, or another control character.
+        This rule also applies to the result of a template render of the subject.
     Message:
       type: object
       required:
@@ -4155,6 +4228,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MessageRecipient'
+          maxItems: 50
           description: Recipients of the message.
         templateKey:
           type: string
@@ -4195,10 +4269,9 @@ components:
         - text
       properties:
         subject:
-          type: string
-          minLength: 1
-          maxLength: 998
-          description: Subject.
+          allOf:
+            - $ref: '#/components/schemas/HeaderText'
+          description: Subject. It has no control character.
         text:
           type: string
           minLength: 1
@@ -4210,6 +4283,12 @@ components:
           maxLength: 1048576
           description: HTML body. A maximum of 1 MiB.
       description: Message content that the caller gives.
+    MessageIdText:
+      type: string
+      minLength: 1
+      maxLength: 998
+      pattern: ^[^\x00-\x1F\x7F]+$
+      description: A message ID for the headers `In-Reply-To` and `References`. It has no control character.
     MessagePage:
       type: object
       required:
@@ -4262,14 +4341,13 @@ components:
       type: object
       properties:
         inReplyTo:
-          type: string
-          minLength: 1
-          maxLength: 998
+          allOf:
+            - $ref: '#/components/schemas/MessageIdText'
           description: Message ID of the message that this message answers.
         references:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/MessageIdText'
           maxItems: 100
           description: Message IDs of the thread.
       description: Message IDs for a thread.
@@ -4324,10 +4402,9 @@ components:
             - $ref: '#/components/schemas/EmailAddress'
           description: Address of the sender. A sender rule of the caller app must allow it.
         fromName:
-          type: string
-          minLength: 1
-          maxLength: 100
-          description: Display name of the sender.
+          allOf:
+            - $ref: '#/components/schemas/SenderDisplayName'
+          description: Display name of the sender. A maximum of 100 characters. It has no control character.
         to:
           type: array
           items:
@@ -4365,6 +4442,12 @@ components:
         - $ref: '#/components/schemas/TemplateSendRequest'
         - $ref: '#/components/schemas/ContentSendRequest'
       description: Request to send a message. The body has `template` or `content`. A body with both is not valid.
+    SenderDisplayName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: ^[^\x00-\x1F\x7F]+$
+      description: Display name of a sender. A maximum of 100 characters. It has no control character.
     SenderRule:
       type: object
       required:
@@ -4387,10 +4470,9 @@ components:
             - $ref: '#/components/schemas/SenderRuleKind'
           description: Kind of the rule.
         value:
-          type: string
-          minLength: 1
-          maxLength: 254
-          description: The domain or the address.
+          allOf:
+            - $ref: '#/components/schemas/SenderRuleValue'
+          description: The domain or the address. Lower case only.
         createdAt:
           type: string
           format: date-time
@@ -4412,10 +4494,9 @@ components:
             - $ref: '#/components/schemas/SenderRuleKind'
           description: Kind of the rule.
         value:
-          type: string
-          minLength: 1
-          maxLength: 254
-          description: The domain or the address.
+          allOf:
+            - $ref: '#/components/schemas/SenderRuleValue'
+          description: The domain or the address. Lower case only.
       description: Request to create a sender rule.
     SenderRuleKind:
       type: string
@@ -4437,6 +4518,16 @@ components:
           type: string
           description: Token for the next page. No value means that this is the last page.
       description: One page of sender rules.
+    SenderRuleValue:
+      type: string
+      minLength: 3
+      maxLength: 254
+      pattern: ^([a-z0-9._%+-]+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$
+      description: |-
+        The domain or the address of a sender rule. The value is in lower case.
+        A rule of the kind `domain` has a domain with no `@`, for example `example.com`.
+        A rule of the kind `address` has a full address, for example `noreply@example.com`.
+        The service gives 422 `validation_failed` when the value does not agree with the kind.
     Suppression:
       type: object
       required:
@@ -4533,10 +4624,9 @@ components:
           maxLength: 500
           description: Description.
         subject:
-          type: string
-          minLength: 1
-          maxLength: 998
-          description: Subject template.
+          allOf:
+            - $ref: '#/components/schemas/HeaderText'
+          description: Subject template. It has no control character. The service checks the rendered subject too.
         text:
           type: string
           minLength: 1
@@ -4578,10 +4668,9 @@ components:
           maxLength: 500
           description: Description.
         subject:
-          type: string
-          minLength: 1
-          maxLength: 998
-          description: Subject template.
+          allOf:
+            - $ref: '#/components/schemas/HeaderText'
+          description: Subject template. It has no control character. The service checks the rendered subject too.
         text:
           type: string
           minLength: 1
@@ -4626,8 +4715,13 @@ components:
         variables:
           type: object
           additionalProperties:
-            type: string
-          description: Values of the variables. The key is a variable name. A maximum of 50 variables. Each value has a maximum of 10000 characters.
+            $ref: '#/components/schemas/TemplateVariableValue'
+          maxProperties: 50
+          description: |-
+            Values of the variables. The key is a variable name.
+            A name matches `^[A-Za-z][A-Za-z0-9_]{0,63}$`. The service gives 422 `validation_failed` for another name.
+            A maximum of 50 variables. Each value has a maximum of 10000 characters.
+            The field is required. A template with no variables needs `{}`.
       description: A template and its variables for a send request.
     TemplateSendRequest:
       type: object
@@ -4641,10 +4735,9 @@ components:
             - $ref: '#/components/schemas/EmailAddress'
           description: Address of the sender. A sender rule of the caller app must allow it.
         fromName:
-          type: string
-          minLength: 1
-          maxLength: 100
-          description: Display name of the sender.
+          allOf:
+            - $ref: '#/components/schemas/SenderDisplayName'
+          description: Display name of the sender. A maximum of 100 characters. It has no control character.
         to:
           type: array
           items:
@@ -4689,10 +4782,9 @@ components:
           maxLength: 500
           description: Description.
         subject:
-          type: string
-          minLength: 1
-          maxLength: 998
-          description: Subject template.
+          allOf:
+            - $ref: '#/components/schemas/HeaderText'
+          description: Subject template. It has no control character. The service checks the rendered subject too.
         text:
           type: string
           minLength: 1
@@ -4700,16 +4792,15 @@ components:
           description: Text template.
         html:
           type: string
-          minLength: 1
           maxLength: 1048576
-          description: HTML template.
+          description: HTML template. An empty string removes the HTML template.
         variables:
           type: array
           items:
             $ref: '#/components/schemas/TemplateVariable'
           maxItems: 50
           description: Variables of the template.
-      description: Request to change a template. A field that is not present does not change. The request needs at least one field. The key does not change.
+      description: Request to change a template. A field that is not present does not change. An empty string for `html` removes the HTML template. The request needs at least one field. The key does not change.
     TemplateVariable:
       type: object
       required:
@@ -4724,6 +4815,10 @@ components:
           type: boolean
           description: If true, a send must give a value.
       description: One variable of a template.
+    TemplateVariableValue:
+      type: string
+      maxLength: 10000
+      description: Value of a template variable. A maximum of 10000 characters.
   securitySchemes:
     BearerAuth:
       type: http

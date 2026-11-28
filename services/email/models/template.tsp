@@ -27,10 +27,8 @@ model Template {
   @maxLength(500)
   description?: string;
 
-  /** Subject template. */
-  @minLength(1)
-  @maxLength(998)
-  subject: string;
+  /** Subject template. It has no control character. The service checks the rendered subject too. */
+  subject: HeaderText;
 
   /** Text template. */
   @minLength(1)
@@ -64,10 +62,8 @@ model TemplateCreate {
   @maxLength(500)
   description?: string;
 
-  /** Subject template. */
-  @minLength(1)
-  @maxLength(998)
-  subject: string;
+  /** Subject template. It has no control character. The service checks the rendered subject too. */
+  subject: HeaderText;
 
   /** Text template. */
   @minLength(1)
@@ -84,25 +80,22 @@ model TemplateCreate {
   variables?: TemplateVariable[];
 }
 
-/** Request to change a template. A field that is not present does not change. The request needs at least one field. The key does not change. */
+/** Request to change a template. A field that is not present does not change. An empty string for `html` removes the HTML template. The request needs at least one field. The key does not change. */
 @friendlyName("TemplateUpdate")
 model TemplateUpdate {
   /** Description. */
   @maxLength(500)
   description?: string;
 
-  /** Subject template. */
-  @minLength(1)
-  @maxLength(998)
-  subject?: string;
+  /** Subject template. It has no control character. The service checks the rendered subject too. */
+  subject?: HeaderText;
 
   /** Text template. */
   @minLength(1)
   @maxLength(1048576)
   text?: string;
 
-  /** HTML template. */
-  @minLength(1)
+  /** HTML template. An empty string removes the HTML template. */
   @maxLength(1048576)
   html?: string;
 

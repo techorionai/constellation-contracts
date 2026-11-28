@@ -187,6 +187,8 @@ describe("email service contract", () => {
     const content = { subject: "Hello", text: "Hello" };
     const addr = (n: number) => `${"e".repeat(n - 12)}@example.com`;
     const many = Array.from({ length: 51 }, (_, i) => `u${i}@example.com`);
+    const vars = (n: number) =>
+      Object.fromEntries(Array.from({ length: n }, (_, i) => [`v${i}`, "x"]));
     const cases: [number, unknown, boolean][] = [
       [1, { ...base, template: tpl }, true],
       [2, { ...base, content }, true],
@@ -201,6 +203,19 @@ describe("email service contract", () => {
       [11, { ...base, content: { subject: "Hello" } }, false],
       [12, { ...base, content, to: [] }, false],
       [13, { ...base, template: { key: "welcome", variables: { n: 1 } } }, false],
+      [14, { ...base, content, fromName: "A\r\nBcc: victim@evil.test" }, false],
+      [15, { ...base, content: { ...content, subject: "Hi\r\nBcc: victim@evil.test" } }, false],
+      [16, { ...base, content, to: ["a@example.com\r\nBcc: victim@evil.test"] }, false],
+      [17, { ...base, content, threading: { inReplyTo: "<a@b>\r\nBcc: victim@evil.test" } }, false],
+      [18, { ...base, content, threading: { references: ["<a@b>\nBcc: victim@evil.test"] } }, false],
+      [19, { ...base, content, replyTo: "a@example.com\u0000" }, false],
+      [20, { ...base, content, threading: { references: ["r".repeat(999)] } }, false],
+      [21, { ...base, content, threading: { inReplyTo: "<a@b>", references: ["<a@b>"] } }, true],
+      [22, { ...base, template: { key: "welcome", variables: {} } }, true],
+      [23, { ...base, template: { key: "welcome", variables: { a: "v".repeat(10001) } } }, false],
+      [24, { ...base, template: { key: "welcome", variables: { a: "v".repeat(10000) } } }, true],
+      [25, { ...base, template: { key: "welcome", variables: vars(51) } }, false],
+      [26, { ...base, template: { key: "welcome", variables: vars(50) } }, true],
     ];
     for (const [n, value, ok] of cases) expect(validate(value), `case ${n}`).toBe(ok);
     const examples = await json("test", "examples", "email-send.json");
@@ -225,7 +240,11 @@ describe("email service contract", () => {
       expect(text, entry.type).not.toContain('"$id"');
       expect(entry.dataSchema.unevaluatedProperties, entry.type).toEqual({ not: {} });
       const refs = [...text.matchAll(/"\$(?:dynamicRef|ref)":"([^"]*)"/g)].map((m) => m[1]);
-      for (const ref of refs) expect(ref.startsWith("#/"), `${entry.type} ${ref}`).toBe(true);
+      for (const ref of refs) {
+        expect(ref.startsWith("#/$defs/"), `${entry.type} ${ref}`).toBe(true);
+        const name = ref.slice("#/$defs/".length);
+        expect(entry.dataSchema.$defs?.[name], `${entry.type} ${ref}`).toBeDefined();
+      }
       expect(checkSchema(entry.dataSchema), entry.type).toEqual([]);
       expect(Buffer.byteLength(text)).toBeLessThan(64 * 1024);
     }
@@ -266,14 +285,14 @@ describe("email service contract", () => {
     expect(header.required ?? false).toBe(false);
     expect(header.schema.minLength).toBe(1);
     expect(header.schema.maxLength).toBe(255);
-    expect(op.responses["409"].headers["Retry-After"]).toBeDefined();
+    expect(op.responses["409"].headers["Retry-After"].required).toBe(true);
     expect(op.responses["422"]).toBeDefined();
     expect(op.description).toContain("idempotency_key_reused");
     expect(op.description).toContain("idempotency_request_in_progress");
   });
 
   // U12
-  it("U12: no email provider in the contract", () => {
+  it("U12: no email provider in the contract", async () => {
     const words = /\b(ses|sns|smtp|aws|amazon|x-amz[a-z-]*)\b/i;
     const hits: string[] = [];
     const walk = (node: unknown, path: string): void => {
@@ -292,7 +311,42 @@ describe("email service contract", () => {
     };
     walk(doc, "openapi");
     walk(registration, "registration");
+    walk(manifest, "manifest");
+    walk(await json("services", "email", "events", "event-types.json"), "event-types");
     expect(hits).toEqual([]);
+  });
+
+  // U17
+  it("U17: sender rule value, template html clear, and recipients limit", () => {
+    const rule = check("SenderRuleCreate");
+    const ok = ["example.com", "mail.example.com", "noreply@example.com", "a+b@example.com"];
+    for (const value of ok) expect(rule({ app: "helpdesk", kind: "domain", value }), value).toBe(true);
+    const bad = ["Example.com", "example", "a b@example.com", "x@example.com\n", "@example.com", ".example.com"];
+    for (const value of bad) expect(rule({ app: "helpdesk", kind: "domain", value }), value).toBe(false);
+    const create = byId["SenderRules_create"].op.description;
+    expect(create).toContain("no subdomain match and no suffix match");
+    const update = check("TemplateUpdate");
+    expect(update({ html: "" })).toBe(true);
+    expect(update({ html: "<p>x</p>" })).toBe(true);
+    expect(update({ subject: "a\nb" })).toBe(false);
+    expect(doc.components.schemas.Message.properties.recipients.maxItems).toBe(50);
+    expect(byId["Suppressions_lookup"].op.responses["429"]).toBeDefined();
+  });
+
+  // U18
+  it("U18: the admin write operations give an audit entry", () => {
+    const actions: [string, string][] = [
+      ["SenderRules_create", "email:sender_rule:create"],
+      ["SenderRules_delete", "email:sender_rule:delete"],
+      ["Suppressions_create", "email:suppression:create"],
+      ["Suppressions_delete", "email:suppression:delete"],
+      ["Templates_create", "email:template:create"],
+      ["Templates_update", "email:template:update"],
+      ["Templates_delete", "email:template:delete"],
+    ];
+    for (const [id, action] of actions) {
+      expect(byId[id].op.description, id).toContain(`audit entry with the action \`${action}\``);
+    }
   });
 
   // U13
