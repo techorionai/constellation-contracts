@@ -4,7 +4,7 @@ This repository makes OpenAPI files only. It does not make Go code. Each consume
 
 ## Generated files
 
-`npm run build` writes one OpenAPI 3.0.0 file for each `@service` namespace in `generated/openapi/`.
+`npm run build` writes one OpenAPI 3.0.0 file for each `@service` namespace in `generated/openapi/`. It also writes one event type registration file for each service with typed event data in `generated/event-types/`.
 
 | File | Content |
 | ---- | ------- |
@@ -13,6 +13,7 @@ This repository makes OpenAPI files only. It does not make Go code. Each consume
 | `services/<service>/manifest.json` | The permission manifest of a service, if the service has a fixed manifest. Examples: `services/identity/manifest.json` and `services/events/manifest.json`, and `services/audit/manifest.json`. A consumer copies it from the same tag as the OpenAPI file. |
 | `Constellation.Events.openapi.yaml` | The events service: event type registration and the event catalog. The consumers are `constellation-platform-go` and `constellation-events`. |
 | `Constellation.Audit.openapi.yaml` | The audit service: search, read, and export audit entries. The consumers are `constellation-platform-go` and `constellation-audit`. `constellation-platform-go` uses the shared audit model of `Constellation.Common.openapi.yaml`. |
+| `generated/event-types/<service>.event-types.json` | The event type registration of a service with typed event data, with one `dataSchema` for each type. Example: `generated/event-types/helpdesk.event-types.json`. A consumer copies it from the same tag as the OpenAPI file, as it copies the manifest. The service embeds it and registers it with the events service. |
 
 Each service file is complete. A consumer needs only the file of its service. It does not need `Constellation.Common.openapi.yaml`.
 

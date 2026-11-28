@@ -9,6 +9,8 @@ constellation-contracts/
 |---- .github/workflows/ci.yml
 |---- docs/
 |---- generated/openapi/        Generated OpenAPI files. Do not edit by hand.
+|---- generated/event-types/    Generated event type registration files. Do not edit by hand.
+|---- scripts/                  Lint script and event type script
 |---- lib/                      Shared models for all services
 |---- services/                 One folder for each service
 |---- test/                     Tests, fixtures, and example documents
@@ -25,7 +27,7 @@ All library files use the blockless namespace `namespace Constellation.Common;`.
 | ------- | --- |
 | `npm ci` | Install the exact package versions. |
 | `npm run format` | Format all `.tsp` files. |
-| `npm run build` | Compile with warnings as errors. Write the files in `generated/openapi/`. |
+| `npm run build` | Compile with warnings as errors. Write the files in `generated/openapi/`. Then write the files in `generated/event-types/`. |
 | `npm run lint` | Compile with no output. Check the format. |
 | `npm test` | Run the tests. |
 
@@ -162,7 +164,8 @@ interface Tickets {
 - An API with authentication declares the scheme `BearerAuth` with `@useAuth(BearerAuth)` on the service namespace. All operations then need a bearer access token.
 - An operation with no authentication has `@useAuth(NoAuth)`. Examples: discovery documents and the OAuth token endpoint.
 - A protected operation lists the permissions that it needs in the extension `x-required-scopes`. The value is an array of `PermissionKey` values. OpenAPI scope lists are static, but permission keys are dynamic, so the extension carries them. An operation that needs no permission has an empty array. A list with more than one key means that the token must have all of them. The call fails with 403 if the token lacks one key.
-- A response that has a token, a secret, or personal data has the headers `Cache-Control: no-store` and `Pragma: no-cache`.
+- A response that has a token, a secret, or personal data has the headers `Cache-Control: no-store` and `Pragma: no-cache`. The error responses of the operation have them too, because an error body can have personal data.
+- A request does not put personal data (for example an email address) in the path or in the query, because logs and traces keep the URL. An operation that finds a resource by personal data is a `POST` with the data in the body, for example `POST /v1/customers:lookup`.
 - The access token claim `app` is the key of the app of a service client. It is not the audience. Only tokens from the client credentials grant have it, with `principal_type` `service`. Exchange tokens, user tokens, and API tokens do not have it. A verifier uses `app` only when `principal_type` is `service`.
 - The access token `scope` claim has permission keys only. The type `ScopeString` holds them. OIDC scopes (`openid`, `profile`, `email`, `offline_access`) go only in the request `scope` of an authorize or token operation. The type `RequestScopeString` holds them.
 
@@ -254,7 +257,7 @@ A request body of type `application/x-www-form-urlencoded` uses `@header content
 
 ## Manifest files
 
-A consumer copies files from a release tag. A TypeSpec constant is not in the generated OpenAPI file. Thus a service with a fixed permission manifest keeps it in `services/<service>/manifest.json`. The file must be valid against `PermissionManifest`. The service embeds a copy of the file. The identity service uses `services/identity/manifest.json`.
+A consumer copies files from a release tag. A TypeSpec constant is not in the generated OpenAPI file. Thus a service with a fixed permission manifest keeps it in `services/<service>/manifest.json`. The file must be valid against `PermissionManifest`. The service embeds a copy of the file. The identity service uses `services/identity/manifest.json`. A service with typed event data also has the generated file `generated/event-types/<service>.event-types.json`. A consumer copies it from the same tag. See "Typed event data".
 
 ## Shared models
 
@@ -419,6 +422,29 @@ A service registers its event types with the events service (`PUT /v1/event-type
 - The same registration again changes nothing.
 - The outbox writer of a service refuses a type that is not in the registration of the service. It uses its own registration, not the catalog.
 - A change writes an audit entry with the action `events:event_type:register`. The entry has the names of the added, removed, and changed types. A request that fails with 403 writes an entry with the result `denied`.
+
+## Typed event data
+
+A service can give a JSON Schema for the `data` of each of its event types. The helpdesk (`services/helpdesk/events/`) is the first service that does this.
+
+- Each data model has the `@jsonSchema` decorator (`@typespec/json-schema`) and `@friendlyName`. Each event has a named model, for example `model TicketCreatedEvent is CloudEvent<TicketCreatedData>`. The `subject` of an event is `<resources>/<id>`, for example `tickets/<id>`.
+- `services/<service>/events/event-types.json` lists the types. Each item has `type`, `description`, and `data` (the name of the data model).
+- `npm run build` compiles the TypeSpec files and then runs `scripts/event-types.mjs`. The script makes `generated/event-types/<service>.event-types.json` in the `EventTypeRegistration` format. Its `source` is `/<service>`. The service embeds a copy of the file from a release tag, and sends it to the events service.
+- The emitter options are in `tspconfig.yaml`: `file-type: json`, `int64-strategy: number` (an `int64` is a JSON `integer`), and `seal-object-schemas: true`. The emitter output is in `tsp-output/json-schema/` and is not committed.
+- The script puts each referenced schema into `$defs`, changes each `$ref` to a local `#/$defs/<name>`, deletes each `$id`, and sets `$schema` to draft 2020-12.
+- The script checks the rules of the events service and fails with the type and the rule. A schema has a maximum of 64 KiB. It has no `$id`, and each `$ref` and `$dynamicRef` is local and points to an examined subschema or to an anchor (see the reference rule below). No `pattern` has look-around or a back reference. The script compiles each schema with Ajv (draft 2020-12, strict mode, no `format` checks). Each type starts with `<service>.` and occurs one time. A description has 1 to 1024 characters. A list has 1 to 200 types.
+- A schema is closed. Each object schema refuses unknown properties (`unevaluatedProperties`). A new data field needs a MINOR release and a new registration file before the producer sends it.
+- A UUID field uses the type `EventResourceId`: `@format("uuid")` and a lowercase pattern in RE2 syntax. Do not reuse `LinkTemplate` or `LinkTemplateSet` in event data. Their patterns use look-ahead.
+- A list of changed field names has `@JsonSchema.uniqueItems`.
+- Event data has IDs, numbers, status values, and field names. It has no free text and no personal data (for example no subject, name, email, or phone number). Every service can read all event streams. A consumer reads the details with the API and its own scopes.
+- An update with no real change writes no event and no audit entry.
+
+The depth rule is equal in this script, in `constellation-platform-go` (`eventtypes`), and in `constellation-events`:
+
+- The check goes only into members of three keyword lists. One schema: `items`, `additionalItems`, `additionalProperties`, `unevaluatedItems`, `unevaluatedProperties`, `contains`, `propertyNames`, `not`, `if`, `then`, `else`, `contentSchema`. A list of schemas: `allOf`, `anyOf`, `oneOf`, `prefixItems`, `items`. A map of schemas: `properties`, `patternProperties`, `$defs`, `definitions`, `dependentSchemas`.
+- The check does not go into `const`, `enum`, `default`, `examples`, or an unknown keyword.
+- The root has depth 1. Each step into a member of a keyword adds 1. For a map keyword, `properties` and then `a` is one step. A depth of more than 32 is refused. The `$id` check applies in each examined subschema in the same way.
+- The reference rule: the walk records the JSON Pointer of each examined subschema (the root is the empty string) and the names of the `$anchor` and `$dynamicAnchor` keywords of the examined subschemas. Each `$ref` and `$dynamicRef` must start with `#`. Its fragment must be the pointer of an examined subschema or the name of a recorded anchor. A pointer into `const`, `enum`, `default`, or an unknown keyword is refused.
 
 ## Audit entries
 

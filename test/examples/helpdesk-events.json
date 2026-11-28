@@ -1,0 +1,155 @@
+{
+  "TicketCreatedData": {
+    "valid": [
+      {
+        "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+        "number": 42,
+        "status": "open",
+        "priority": "normal",
+        "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89"
+      }
+    ],
+    "invalid": [
+      {
+        "rule": "unknown status",
+        "value": {
+          "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+          "number": 42,
+          "status": "done",
+          "priority": "normal",
+          "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89"
+        }
+      },
+      {
+        "rule": "unknown property",
+        "value": {
+          "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+          "number": 42,
+          "status": "open",
+          "priority": "normal",
+          "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+          "subject": "Printer is broken"
+        }
+      },
+      {
+        "rule": "upper case UUID",
+        "value": {
+          "ticketId": "0192F4C0-7B1A-7C3E-9A55-3F2D1C0B9A88",
+          "number": 42,
+          "status": "open",
+          "priority": "normal",
+          "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89"
+        }
+      }
+    ]
+  },
+  "TicketUpdatedData": {
+    "valid": [
+      {
+        "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+        "number": 42,
+        "changedFields": ["subject", "priority"]
+      }
+    ],
+    "invalid": [
+      {
+        "rule": "empty changedFields",
+        "value": {
+          "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+          "number": 42,
+          "changedFields": []
+        }
+      },
+      {
+        "rule": "duplicate item",
+        "value": {
+          "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+          "number": 42,
+          "changedFields": ["subject", "subject"]
+        }
+      },
+      {
+        "rule": "unknown field name",
+        "value": {
+          "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+          "number": 42,
+          "changedFields": ["status"]
+        }
+      }
+    ]
+  },
+  "TicketStatusChangedData": {
+    "valid": [
+      {
+        "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+        "number": 42,
+        "from": "open",
+        "to": "resolved"
+      }
+    ],
+    "invalid": [
+      {
+        "rule": "unknown status",
+        "value": {
+          "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+          "number": 42,
+          "from": "open",
+          "to": "done"
+        }
+      },
+      {
+        "rule": "missing to",
+        "value": {
+          "ticketId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a88",
+          "number": 42,
+          "from": "open"
+        }
+      }
+    ]
+  },
+  "CustomerCreatedData": {
+    "valid": [{ "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89" }],
+    "invalid": [
+      {
+        "rule": "unknown property",
+        "value": {
+          "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+          "email": "ada@example.com"
+        }
+      },
+      { "rule": "missing customerId", "value": {} }
+    ]
+  },
+  "CustomerUpdatedData": {
+    "valid": [
+      {
+        "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+        "changedFields": ["email"]
+      }
+    ],
+    "invalid": [
+      {
+        "rule": "empty changedFields",
+        "value": {
+          "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+          "changedFields": []
+        }
+      },
+      {
+        "rule": "duplicate item",
+        "value": {
+          "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+          "changedFields": ["name", "name"]
+        }
+      },
+      {
+        "rule": "unknown property",
+        "value": {
+          "customerId": "0192f4c0-7b1a-7c3e-9a55-3f2d1c0b9a89",
+          "changedFields": ["name"],
+          "name": "Ada"
+        }
+      }
+    ]
+  }
+}
