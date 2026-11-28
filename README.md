@@ -4,7 +4,7 @@ TypeSpec contracts for the Constellation platform. This repository holds the Typ
 
 Shared models: errors (RFC 9457), cursor pagination, the CloudEvents envelope, link templates, the permission manifest, the event type registration, and the access token claims.
 
-Services: identity (`Constellation.Identity`), events (`Constellation.Events`), and audit (`Constellation.Audit`). The permission manifests are in `services/identity/manifest.json`, `services/events/manifest.json`, and `services/audit/manifest.json`.
+Services: identity (`Constellation.Identity`), events (`Constellation.Events`), audit (`Constellation.Audit`), and helpdesk (`Constellation.Helpdesk`). The permission manifests are in `services/identity/manifest.json`, `services/events/manifest.json`, `services/audit/manifest.json`, and `services/helpdesk/manifest.json`. The helpdesk also has typed event data: `generated/event-types/helpdesk.event-types.json`.
 
 ## Layout
 
@@ -12,6 +12,7 @@ Services: identity (`Constellation.Identity`), events (`Constellation.Events`), 
 lib/                 Shared models
 services/            One folder for each service, with an optional manifest.json
 generated/openapi/   Generated OpenAPI 3.0.0 files, one for each service
+generated/event-types/   Generated event type registration files
 docs/                Conventions, usage, and the TypeSpec guide
 test/                Tests, fixtures, and example documents
 ```
